@@ -1,0 +1,3 @@
+[submodule "vim/bundle/reasier"]
+	path = vim/bundle/reasier
+	url = https://github.com/fmars/reasier.git
