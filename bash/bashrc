@@ -1,0 +1,54 @@
+# .bashrc
+
+# User specific aliases and functions
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+	. /etc/bashrc
+fi
+
+# Source Facebook definitions
+if [ -f /mnt/vol/engshare/admin/scripts/master.bashrc ]; then
+	. /mnt/vol/engshare/admin/scripts/master.bashrc
+fi
+
+EDITOR=vim
+export EDITOR
+
+bind '"\e[A"':history-search-backward
+bind '"\e[B"':history-search-forward
+
+# enable vim keyboard binding
+set -o vi
+HISTSIZE=130000 HISTFILESIZE=-1
+HISTSIZE=130000 HISTFILESIZE=-1
+
+shopt -s histappend
+history -a
+history -n
+export PROMPT_COMMAND="history -a; history -n"
+
+bind "\e[A":history-search-backward
+bind "\e[B":history-search-forward
+
+alias gofb="cd ~/fbsource/fbcode"
+alias gody="cd ~/fbsource/fbcode/power/dynamo/"
+alias goac="cd ~/fbsource/fbcode/power/accurpower/"
+alias godi="cd /home/fjc/dataswarm/tasks/infrastructure/evergreen/accurpower"
+alias goab="cd ~/fbsource/fbcode/power/autobalancer"
+
+alias d1="mosh -6 dev8621.prn1.facebook.com"
+alias d2="mosh -6 dev6385.prn1.facebook.com"
+
+
+# autobalancer
+get_layout() {
+    ~/fbsource/fbcode/buck-out/gen/power/autobalancer/if/autobalancer_service-AutobalancerMainService-pyremote.par \
+    -f -h localhost:20666 createBalancedLayout "AutobalancerInput(docID=$1,verID=$2,userFBID=100006628539324)"
+}
+alias testab=get_layout
+alias buildab="buck build power/autobalancer/..."
+alias abserver="~/fbsource/fbcode/buck-out/gen/power/autobalancer/auto_balancer_thrift_server.par --debug"
+
+# A function to launch ipython notebooks
+function ifbpynb { pushd ~/python; /usr/local/bin/ifbpy notebook --profile=nbserver; popd; }
