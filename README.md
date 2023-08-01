@@ -1,1 +1,1 @@
-Basic config files to set up a host
+Basic config files to set up a host.
