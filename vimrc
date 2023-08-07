@@ -1,5 +1,5 @@
 inoremap kj <Esc>
-set num
+set nu
 set hlsearch
 syntax on
 

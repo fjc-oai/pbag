@@ -7,6 +7,15 @@ if ! command -v tmux &> /dev/null; then
     sudo apt-get install -y tmux
 fi
 
+# Check if git is installed, if not, install it
+if ! command -v git &> /dev/null; then
+    echo "Installing git..."
+    sudo apt-get update
+    sudo apt-get install -y git
+fi
+# Set default editor for git to "vim"
+git config --global core.editor "vim"
+
 # Function to copy files if they exist
 copy_file() {
     if [ -f "$1" ]; then
