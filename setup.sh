@@ -15,6 +15,8 @@ if ! command -v git &> /dev/null; then
 fi
 # Set default editor for git to "vim"
 git config --global core.editor "vim"
+git config --global credential.helper store
+
 
 # Function to copy files if they exist
 copy_file() {
