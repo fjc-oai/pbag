@@ -1,1 +1,2 @@
-My scripts
+./setup.sh
+
