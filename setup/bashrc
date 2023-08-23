@@ -1,5 +1,7 @@
 # .bashrc
 
+PS1='%n@%m:%~$ '
+
 # User specific aliases and functions
 
 # Source global definitions
