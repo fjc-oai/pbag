@@ -14,8 +14,10 @@ Example package following python packaging tutorail https://packaging.python.org
 
 - Use the package
     python3
-    >>> from pd3220u import thunderbolt
+    ```
+    >>> from pd3220u import thunderbolt"
     >>> thunderbolt.spec()
+    ```
 
 - Uninstall the package
     python3 -m pip uninstall pd3220u
