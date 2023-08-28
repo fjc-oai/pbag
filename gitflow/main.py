@@ -1,5 +1,6 @@
+import utils
 def main():
-    print('running upgraded main()')
+    utils.foo()
 
 if __name__ == '__main__':
     main()
