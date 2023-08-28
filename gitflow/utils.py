@@ -1,2 +1,2 @@
 def foo():
-    print("running upgraded foo()")
+    print("running upgraded-after-PR foo()")
