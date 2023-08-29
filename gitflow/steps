@@ -1,0 +1,11 @@
+git checkout master
+git fetch
+git rebase
+git checkout -b new-feature
+git add -A
+git commmit -m 'adding new feature'
+git push origin new-feature
+git add -A
+git commit -m 'resolve comments'
+git push
+
