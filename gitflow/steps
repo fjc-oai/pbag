@@ -1,0 +1,12 @@
+git checkout master
+git fetch
+git rebase
+git checkout -b new-feature
+git add -A
+git commmit -m 'adding new feature'
+git push --set-upstream origin HEAD
+git add -A
+git commit -m 'resolve comments'
+git push --set-upstream origin HEAD
+
+
