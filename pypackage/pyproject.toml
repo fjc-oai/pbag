@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pd3220u"
-version = "0.3.1"
+name = "monitors"
+version = "0.6.1"
 authors = [
   { name="fmars", email="fmarsf@gmail.com" },
 ]
