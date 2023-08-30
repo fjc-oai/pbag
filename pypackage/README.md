@@ -2,27 +2,27 @@ Example package following python packaging tutorail https://packaging.python.org
 
 - Build the package:
   
-    `python3 -m build`
+    `python -m build`
 
 - Upload the package (don't forget to update the version number and clear up the dist folder first)
 
-    `python3 -m twine upload --repository testpypi dist/*`
+    `python -m twine upload --repository testpypi dist/*`
 
 - Install the package:
 
-    `python3 -m pip install --index-url https://test.pypi.org/simple --no-deps pd3220u`
+    `python -m pip install --index-url https://test.pypi.org/simple --no-deps monitors`
 
 - Upgrade the package:
 
-    `python3 -m pip install --upgrade --index-url https://test.pypi.org/simple --no-deps pd3220u`
+    `python -m pip install --upgrade --index-url https://test.pypi.org/simple --no-deps monitors`
 
 - Use the package
 
     ```
-    python3
-    >>> from pd3220u import thunderbolt"
-    >>> thunderbolt.spec()
+    python
+    >>> from pd3220u.spec import print_spec
+    >>> print_spec()
     ```
 - Uninstall the package
 
-  `python3 -m pip uninstall pd3220u`
+  `python -m pip uninstall monitors`
