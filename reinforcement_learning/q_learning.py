@@ -28,7 +28,7 @@ def get_discrete_state(state):
 
 for episode in range(EPISODES):
     print(f"Running episoid {episode}")
-    if episode == SHOW_EVERY:
+    if episode and episode % SHOW_EVERY == 0:
         old_env = env
         env = gym.make("MountainCar-v0", render_mode='human')
 
@@ -62,7 +62,7 @@ for episode in range(EPISODES):
     # Decaying is being done every episode if episode number is within decaying range
     if END_EPSILON_DECAYING >= episode >= START_EPSILON_DECAYING:
         epsilon -= epsilon_decay_value
-    if episode == SHOW_EVERY:
+    if episode and episode % SHOW_EVERY == 0:
         env.close()
         env = old_env
 
