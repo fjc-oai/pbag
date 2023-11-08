@@ -3,5 +3,5 @@ def foo():
 
 def bar():
     print("running the bar()")
+    print("more and more")
 
-# my comment, again
