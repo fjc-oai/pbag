@@ -44,19 +44,21 @@ d = torch.device("cuda")
 
 @dataclass
 class Config:
-    n_episode = 10000
-    record_every_n = 3000
+    n_episode = 100
+    record_every_n = 50
     n_step = 10000
-    train_start_at_n = 100
-    train_every_n = 8
-    batch_size = 8
+    train_start_at_step_n = 100
+    train_every_step_n = 8
+    sync_every_step_n = 64
+    batch_size = 32
     lr = 0.1
     discount = 0.95
     max_eps = 1.0
     min_eps = 0.05
     decay_rate = 0.0005
-    sync_every_n = 30
     replay_buffer_size = 1000
+    eval_n_episode = 10
+    eval_every_n = 50
 
 
 def make_env(cfg):
@@ -64,7 +66,7 @@ def make_env(cfg):
     env = gym.wrappers.RecordVideo(
         env,
         "",
-        episode_trigger=lambda x: x % cfg.record_every_n == 0,
+        episode_trigger=lambda x: (x + 1) % cfg.record_every_n == 0,
         name_prefix="arita",
     )
     env = gym.wrappers.ResizeObservation(env, (84, 84))
@@ -144,6 +146,7 @@ class ReplayBuffer:
 
 
 def train(env, m, target_m, opt, rb, cfg):
+    eval_res = {}
     for episode in tqdm(range(cfg.n_episode)):
         obs, info = env.reset()
         for step in range(cfg.n_step):
@@ -164,8 +167,8 @@ def train(env, m, target_m, opt, rb, cfg):
 
             rb.add(obs, action, next_obs, reward, termination, truncation, info)
 
-            if step > cfg.train_start_at_n:
-                if step % cfg.train_every_n == 0:
+            if step > cfg.train_start_at_step_n:
+                if step % cfg.train_every_step_n == 0:
                     data = rb.sample(cfg.batch_size)
                     with torch.no_grad():
                         max_q, _ = target_m(data.next_obs.to(d)).max(dim=1)
@@ -179,9 +182,29 @@ def train(env, m, target_m, opt, rb, cfg):
                     opt.zero_grad()
                     loss.backward()
                     opt.step()
-                if step % cfg.sync_every_n == 0:
+                if step % cfg.sync_every_step_n == 0:
                     target_m.load_state_dict(m.state_dict())
         print(f'At {episode} {loss=}')
+        if (episode + 1) % cfg.eval_every_n == 0:
+            rewards = []
+            for eval_episode in range(cfg.eval_n_episode):
+                reward_acc = 0
+                obs, info = env.reset()
+                while True:
+                    x = torch.Tensor(obs).unsqueeze(0).to(d)
+                    logits = m(x)
+                    action = torch.argmax(logits).cpu().item()
+                    next_obs, reward, termination, truncation, info = env.step(action)
+                    reward_acc += reward
+                    if termination or truncation:
+                        rewards.append(reward_acc)
+                        break
+            eval_res[episode] = dict(
+                mean= np.mean(rewards),
+                std= np.std(rewards)
+            )
+    return eval_res
+
 
 
 def main():
@@ -192,7 +215,8 @@ def main():
     target_m = QNetwork(env.action_space.n).to(d)
     target_m.load_state_dict(m.state_dict())
     rb = ReplayBuffer(cfg.replay_buffer_size)
-    train(env, m, target_m, opt, rb, cfg)
+    eval_res = train(env, m, target_m, opt, rb, cfg)
+    print(eval_res)
     env.close()
 
 
