@@ -2,12 +2,6 @@
 #   Huggingface Deep RL Course https://huggingface.co/learn/deep-rl-course/unit3/deep-q-algorithm
 #   vwxyzjn implementation https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py
 #
-# TODO:
-#   0. refactor
-#   1. wandb
-#   2. eval
-#   3. save/load
-#   4. hparam tuning
 # !apt-get install swig cmake ffmpeg > /dev/null 2>&1
 # !pip install gymnasium > /dev/null 2>&1
 # !pip install gymnasium[box2d] > /dev/null 2>&1
@@ -175,16 +169,18 @@ def train(env, m, target_m, opt, rb, cfg):
                         y = data.reward.to(d) + cfg.discount * max_q * (
                             1.0 - data.done.to(d)
                         )
-                    pred = m(data.obs.to(d)).gather(
-                        dim=1, index=data.action.view(-1, 1).to(d)
-                    ).squeeze(1)
+                    pred = (
+                        m(data.obs.to(d))
+                        .gather(dim=1, index=data.action.view(-1, 1).to(d))
+                        .squeeze(1)
+                    )
                     loss = torch.nn.functional.mse_loss(pred, y)
                     opt.zero_grad()
                     loss.backward()
                     opt.step()
                 if step % cfg.sync_every_step_n == 0:
                     target_m.load_state_dict(m.state_dict())
-        print(f'At {episode} {loss=}')
+        print(f"At {episode} {loss=}")
         if (episode + 1) % cfg.eval_every_n == 0:
             rewards = []
             for eval_episode in range(cfg.eval_n_episode):
@@ -199,12 +195,8 @@ def train(env, m, target_m, opt, rb, cfg):
                     if termination or truncation:
                         rewards.append(reward_acc)
                         break
-            eval_res[episode] = dict(
-                mean= np.mean(rewards),
-                std= np.std(rewards)
-            )
+            eval_res[episode] = dict(mean=np.mean(rewards), std=np.std(rewards))
     return eval_res
-
 
 
 def main():
