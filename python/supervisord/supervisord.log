@@ -1,0 +1,17 @@
+2024-01-29 23:47:34,627 INFO Increased RLIMIT_NOFILE limit to 1024
+2024-01-29 23:47:34,637 INFO daemonizing the supervisord process
+2024-01-29 23:47:34,639 INFO supervisord started with pid 54747
+2024-01-29 23:47:35,656 INFO spawned: 'timer' with pid 54751
+2024-01-29 23:47:36,660 INFO success: timer entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2024-01-29 23:48:30,570 INFO Increased RLIMIT_NOFILE limit to 1024
+2024-01-29 23:48:30,576 INFO daemonizing the supervisord process
+2024-01-29 23:48:30,578 INFO supervisord started with pid 54834
+2024-01-29 23:48:31,590 INFO spawned: 'timer' with pid 54838
+2024-01-29 23:48:32,594 INFO success: timer entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2024-01-29 23:48:33,221 INFO Increased RLIMIT_NOFILE limit to 1024
+2024-01-29 23:48:33,223 INFO supervisord started with pid 54840
+2024-01-29 23:48:34,239 INFO spawned: 'timer' with pid 54842
+2024-01-29 23:48:35,243 INFO success: timer entered RUNNING state, process has stayed up for > than 1 seconds (startsecs)
+2024-01-29 23:48:45,256 WARN received SIGINT indicating exit request
+2024-01-29 23:48:45,257 INFO waiting for timer to die
+2024-01-29 23:48:45,259 WARN stopped: timer (terminated by SIGTERM)
