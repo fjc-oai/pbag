@@ -12,3 +12,6 @@ def x5():
 
 def x6():
     pass
+
+def x7():
+    pass
