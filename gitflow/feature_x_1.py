@@ -9,3 +9,9 @@ def x4_from_another_person_with_merge_conflict():
 
 def x5():
     pass
+
+def x6():
+    pass
+
+def x7():
+    pass
