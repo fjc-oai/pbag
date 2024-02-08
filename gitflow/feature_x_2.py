@@ -3,3 +3,6 @@ def x3():
 
 def x4():
     pass
+
+def x5():
+    pass
