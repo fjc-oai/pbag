@@ -15,3 +15,9 @@
 2024-01-29 23:48:45,256 WARN received SIGINT indicating exit request
 2024-01-29 23:48:45,257 INFO waiting for timer to die
 2024-01-29 23:48:45,259 WARN stopped: timer (terminated by SIGTERM)
+2024-02-09 13:38:42,553 WARN received SIGTERM indicating exit request
+2024-02-09 13:38:42,557 WARN received SIGTERM indicating exit request
+2024-02-09 13:38:42,558 INFO waiting for timer to die
+2024-02-09 13:38:42,563 INFO waiting for timer to die
+2024-02-09 13:38:42,566 WARN stopped: timer (terminated by SIGTERM)
+2024-02-09 13:38:42,569 WARN stopped: timer (terminated by SIGTERM)
