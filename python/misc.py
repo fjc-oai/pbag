@@ -44,9 +44,19 @@ def test_1():
     m3["a"].pop()
     print(f"{m=}, {m3=}")
 
+def f1():
+    f2()
+
+def f2():
+    f3()
+
+def f3():
+    import traceback
+    s=traceback.format_stack()
+    print("\n".join(s))
 
 def main():
-    test_1()
+    f1()
 
 
 if __name__ == "__main__":
