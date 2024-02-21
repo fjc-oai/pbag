@@ -1,6 +1,8 @@
 import concurrent.futures
+import random
 import threading
 import time
+from dataclasses import dataclass
 
 
 def test_ordering():
@@ -70,9 +72,66 @@ def test_mpmc_queue():
     print("test_mpmc_queue passed")
 
 
+@dataclass
+class State:
+    lock = threading.Lock()
+    is_racing = False
+    n_players = 0
+    group_conditions = {}
+    official_condition = None
+
+
+def player_thread(player_id, group_id, state):
+    with state.lock:
+        if group_id not in state.group_conditions:
+            state.group_conditions[group_id] = threading.Condition(state.lock)
+        group_condition = state.group_conditions[group_id]
+        while not state.is_racing:
+            group_condition.wait()
+        state.n_players += 1
+    print(f"Group {group_id}: player {player_id} starts")
+    time.sleep(random.uniform(2, 5))
+    print(f"Group {group_id}: player {player_id} finishes")
+    with state.lock:
+        state.n_players -= 1
+        if state.n_players == 0:
+            state.is_racing = False
+            state.official_condition.notify()
+
+
+def official_thread(state, n_groups):
+    for group_id in range(n_groups):
+        with state.lock:
+            state.official_condition = threading.Condition(state.lock)
+            while state.is_racing:
+                state.official_condition.wait()
+            s = f"Official: group {group_id} starts racing"
+            print("*" * len(s))
+            print(s)
+            print("*" * len(s))
+            state.is_racing = True
+            group_condition = state.group_conditions[group_id]
+            group_condition.notify_all()
+
+def test_race():
+    state = State()
+    N_PLAYERS = 12
+    N_GROUPS = 3
+    PLAYERS_PER_GROUP = N_PLAYERS // N_GROUPS
+    futs = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=N_PLAYERS + 1) as executor:
+        for i in range(N_PLAYERS):
+            futs.append(executor.submit(player_thread, i, i // PLAYERS_PER_GROUP, state))
+        futs.append(executor.submit(official_thread, state, N_GROUPS))
+    for fut in futs:
+        fut.result()
+    print("test_race passed")
+
+
 def main():
-    test_ordering()
-    test_mpmc_queue()
+    # test_ordering()
+    # test_mpmc_queue()
+    test_race()
 
 
 if __name__ == "__main__":
