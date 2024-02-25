@@ -3,12 +3,10 @@ Torch profiler results sometimes can be tedious to read
 - Irrelevant threads appearing between the main thread and cuda stream events.
 - Excessively deep stack frames made cuda stream far from python functions.
 
-Usage:
-    Inspect original trace file to find the tids to keep, max_depth to keep.
-    >>> python parse_torch_profiler.py /path/to/torch_profiler.json --pids=4019082,4019083 --max-depth=40
 
-    Or, use `auto` to automatically find the main thread and keep it.
-    >>> python parse_torch_profiler.py /path/to/torch_profiler.json --tids=auto --max-depth=40
+Inspect original trace file to find the tids to keep, max_depth to keep.
+Usage:
+    python parse_torch_profiler.py /path/to/torch_profiler.json --pids=4019082,4019083 --max-depth=40
 
 Visualization tools:
     chrome://tracing/
