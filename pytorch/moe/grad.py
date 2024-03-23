@@ -1,4 +1,6 @@
 import torch
+
+
 def test_1():
     print("Running test_1")
     torch.manual_seed(0)
@@ -11,6 +13,7 @@ def test_1():
     loss = z.sum()
     loss.backward()
     print("Done running test_1")
+
 
 def test_2():
     print("Running test_2")
@@ -33,9 +36,38 @@ def test_2():
     loss.backward()
     print("Done running test_2")
 
+
+class Moe(torch.autograd.Function):
+    def forward(self, x):
+        self.save_for_backward(x)
+        return x
+
+    def backward(self, grad_output):
+        x = self.saved_tensors
+        grad_x = grad_output
+        return grad_x
+
+
+def test_3():
+    print("Running test_3")
+    torch.manual_seed(0)
+    x = torch.rand(16, 8)
+    x.requires_grad = True
+    if x.requires_grad:
+        x.register_hook(lambda grad: print(f"x.grad: {grad}"))
+    y = torch.rand(8, 8)
+    x = Moe.apply(x)
+    z = torch.mm(x, y)
+    loss = z.sum()
+    loss.backward()
+    print("Done running test_3")
+
+
 def main():
-    test_1()
-    test_2()
+    # test_1()
+    # test_2()
+    test_3()
+
 
 if __name__ == "__main__":
     main()
