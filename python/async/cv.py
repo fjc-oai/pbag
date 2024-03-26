@@ -127,11 +127,40 @@ def test_race():
         fut.result()
     print("test_race passed")
 
+def worker_thread(idx, lock, state):
+    with lock:
+        cv = threading.Condition(lock)
+        state[idx] = cv
+        cv.wait()
+    print(f"worker {idx} starts")
+
+def test_shared_lock():
+    lock = threading.Lock()
+    state = {}
+    futs = []
+    N_WORKERS = 5
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=N_WORKERS)
+    for i in range(N_WORKERS):
+        futs.append(executor.submit(worker_thread, i, lock, state))
+    print("All workers are created and waiting")
+    wakeup_list = list(range(N_WORKERS))
+    import random
+    random.shuffle(wakeup_list)
+    print(f"Waking up workers in order: {wakeup_list}")
+    for idx in wakeup_list:
+        with lock:
+            state[idx].notify()
+            time.sleep(1)
+    for fut in futs:
+        fut.result()
+    print("test_shared_lock passed")
+
 
 def main():
     # test_ordering()
     # test_mpmc_queue()
-    test_race()
+    # test_race()
+    test_shared_lock()
 
 
 if __name__ == "__main__":
