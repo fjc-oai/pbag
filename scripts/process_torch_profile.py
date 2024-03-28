@@ -6,7 +6,7 @@ Torch profiler results sometimes can be tedious to read
 
 Inspect original trace file to find the tids to keep, max_depth to keep.
 Usage:
-    python parse_torch_profiler.py /path/to/torch_profiler.json --pids=4019082,4019083 --max-depth=40
+    python parse_torch_profiler.py /path/to/torch_profiler.json --tids=4019082,4019083 --max-depth=40
 
 Visualization tools:
     chrome://tracing/
