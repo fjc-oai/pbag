@@ -140,33 +140,42 @@ def _cuda_sleep(x):
 
 
 def tensor_lifetime_in_async_ops_pytorch():
-    N_ITER = 50
+    N_ITER = 10
     SIZE = 1024**2 * 128
     res = torch.zeros(N_ITER, device="cuda")
     context = Context()
     streams = [torch.cuda.Stream() for _ in range(N_ITER)]
+    events = [torch.cuda.Event() for _ in range(N_ITER)]
     _print_cuda_mem_usage()
+    x = torch.zeros(SIZE, device="cuda")
     for idx in range(N_ITER):
         with torch.cuda.stream(streams[idx]):
-            x = torch.full((SIZE,), idx * 1.0, device="cuda")
+            x.copy_(torch.full((SIZE,), idx * 1.0, device="cuda"))
             context._stage_buffer = x
-            _cuda_sleep(1)
+            t1 = torch.randn(1024*16, 1024*16, device="cuda")
+            t2 = torch.randn(1024*16, 1024*16, device="cuda")
+            t = t1 @ t2
+            # _cuda_sleep(10)
             z = x.sum()
             res[idx] = z
             _print_cuda_mem_usage()
-    print("before sync", flush=True)
+            events[idx].record()
+    for idx in range(N_ITER):
+        with torch.cuda.stream(streams[idx]):
+            events[idx].wait()
+            print(f"event {idx} done", flush=True)
     torch.cuda.synchronize()
     print("after sync", flush=True)
     _print_cuda_mem_usage()
     for idx in range(N_ITER):
         print(f"idx {idx}: expected={idx * SIZE}, actual={res[idx]}")
-        assert res[idx] == idx * SIZE
+        # assert res[idx] == idx * SIZE
 
 
 def main():
-    event_wait_vs_sync()
-    object_lifetime()
-    tensor_lifetime()
+    # event_wait_vs_sync()
+    # object_lifetime()
+    # tensor_lifetime()
     tensor_lifetime_in_async_ops_pytorch()
 
 
