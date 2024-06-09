@@ -1,16 +1,5 @@
 """
-Chapter 2: Lists and Dictionaries
 
-1. catch-all unpacking
-    a, *b, c = [1, 2, 3, 4, 5]
-
-2. sort using key parameter
-    sorted(iterable, key=lambda x: x[1])
-
-3. update nested dict
-    d[key] = d.get(key, 0) + 1
-    from collections import defaultdict
-    d = defaultdict(lambda: defaultdict(list))
 
 """
 
