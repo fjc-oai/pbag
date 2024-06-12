@@ -67,3 +67,11 @@ By Brett Slatkin
         is essentially equavallent to
             fn = trace(fn)
     c. Use functions.wraps to preserve the function interface and metadata
+
+# Chapter 5: classes 
+    a. Use class as a stateful closure. __call__ method is a strong hint of being used a function argument.
+    b. Use super().__init__() ensure MRO initialization order and diamond inheritance.
+    c. MixIn: a very weird pattern in python
+        extract out pluggable behaviors
+        only define methods but no member variables
+        methods will act on member variables from subclasses
