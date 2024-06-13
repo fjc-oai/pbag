@@ -75,3 +75,8 @@ By Brett Slatkin
         extract out pluggable behaviors
         only define methods but no member variables
         methods will act on member variables from subclasses
+
+# Chapter 6: metaclasses and attributes
+    a. @property, @property.setter: associate customizations (e.g. computation, validation, etc) on getters and setters
+
+
