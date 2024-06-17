@@ -82,3 +82,26 @@ def test_mutable_as_default_param():
     assert foo(1) == [1]
     assert foo(2) == [1, 2]
     assert foo(3) == [1, 2, 3]
+
+def test_mutable_arguement():
+    class Foo:
+        def __init__(self, x):
+            self.x = x
+        def add(self, a):
+            self.x.append(a)
+    
+    class Bar:
+        def __init__(self, x):
+            self.x = list(x)
+        def add(self, a):
+            self.x.append(a)
+
+    l1 = [1, 2, 3]
+    f = Foo(l1)
+    f.add(4)
+    assert l1 == [1, 2, 3, 4]
+
+    l2 = [1, 2, 3]
+    b = Bar(l2)
+    b.add(4)
+    assert l2 == [1, 2, 3]

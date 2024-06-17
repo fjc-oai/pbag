@@ -92,3 +92,11 @@ https://www.amazon.com/Fluent-Python-Concise-Effective-Programming/dp/1491946008
 3. Function parameters as references
     - Mutable types as parameter defaults is error prone, e.g. def foo(l=[])
         - All class/function instances share the same default param value
+    - Use copy instead of assign to store argument as member variable, e.g.
+        def foo(self, l):
+            self._l = list(l)
+4. Gargabe Collection
+    - del deletes names, not objects
+    - Objects are freed either, 1) refcount reaches zero, immediately destroyed, 2) reference cycle detection when gc.collect()
+    - Python console automatically bind _ variable to the result of expression that are not None
+    
