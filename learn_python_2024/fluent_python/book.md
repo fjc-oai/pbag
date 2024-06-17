@@ -77,3 +77,18 @@ https://www.amazon.com/Fluent-Python-Concise-Effective-Programming/dp/1491946008
     - Use functools.wraps to copy relavant attributes
     - Parameterized decorator needs to be a decorator factory
     - Another handy functools lib, lru_cache
+
+###################################################
+# Chapter 8. Object Memory Management
+###################################################    
+1. Identity, equality, and alias
+    - is vs ==
+2. Copy vs deepcopy
+    - Shallow copy by default
+    - Shallow copy creates alias for each attribute of the object
+        - For list, it creates alias for each element
+        - For dict, it creates alias for each kv
+    - deepcopy recursively copies everything
+3. Function parameters as references
+    - Mutable types as parameter defaults is error prone, e.g. def foo(l=[])
+        - All class/function instances share the same default param value
