@@ -74,6 +74,7 @@ def test_deep_copy_object():
     a.x.append(4)
     assert 4 not in a2.x
 
+
 def test_mutable_as_default_param():
     def foo(a, b=[]):
         b.append(a)
@@ -83,16 +84,19 @@ def test_mutable_as_default_param():
     assert foo(2) == [1, 2]
     assert foo(3) == [1, 2, 3]
 
+
 def test_mutable_arguement():
     class Foo:
         def __init__(self, x):
             self.x = x
+
         def add(self, a):
             self.x.append(a)
-    
+
     class Bar:
         def __init__(self, x):
             self.x = list(x)
+
         def add(self, a):
             self.x.append(a)
 

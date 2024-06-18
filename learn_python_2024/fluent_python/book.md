@@ -132,3 +132,10 @@ https://www.amazon.com/Fluent-Python-Concise-Effective-Programming/dp/1491946008
     - Conceptual wise, iterator retrieves items from an existing inventory, whereas generator creates new things.
     - In many cases, people don't strictly distinsh iterator and generator.
 4. itertools.count(0, 1)
+
+###################################################
+# Chapter 15. Contgext Manasger
+################################################### 
+1. Implement __enter__() and __exit__() for context manager interface.
+2. Use @contextlib.contextmanager decorator with yield.
+3. Remember to include try final, otherwise exception raised in the body of with block, without restoring the state.
