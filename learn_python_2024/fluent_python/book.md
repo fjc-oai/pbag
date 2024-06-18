@@ -100,3 +100,35 @@ https://www.amazon.com/Fluent-Python-Concise-Effective-Programming/dp/1491946008
     - Objects are freed either, 1) refcount reaches zero, immediately destroyed, 2) reference cycle detection when gc.collect()
     - Python console automatically bind _ variable to the result of expression that are not None
     
+###################################################
+# Chapter 9. A Pythonic Object (more dunder methods)
+###################################################    
+1. Classmethod vs Staticmethod: 
+    - Classmethod: commonly used as alternative constructors
+    - Staticmethod: no good reason of existance
+2. More dunder methods: __format__(), __hash__()
+    - __slots__: 1) efficient memory format, 2) forbid extra attributes definitions
+
+###################################################
+# Chapter 10 & 11. More and more dunner methods
+###################################################    
+1. Duck-typing: don't check type. Check behaviors.
+2. Monkey patching: changing a class or module at runtime, without touching the source code.
+
+###################################################
+# Chapter 14. Iterables, Iterators, and Generators
+###################################################    
+1. For-in-loop under the hook  
+    - calls iter(x) over an object to get the iterator
+    - iter() checks if __iter__() is implemented, or fallback to __getitem__(), or TypeError
+    - repeatedly calls next(it), until StopIteration exception
+2. Iterable vs Iterator
+    - Iterable interface implements __iter__() method which returns a iterator, (or implements __getitem__())
+    - Iterator inteface implements __next__() to return the next available item (or raise StopIteration), 
+        and __iter__() to return itself, which allows iterators to be used where an iterable is expected
+    Iterators are iterable. Iterables may not be iterators.
+3. Generator vs Iterator
+    - Functional wise, every generator is a iterator, which implements iterator interface (__next__ and __iter__).
+    - Conceptual wise, iterator retrieves items from an existing inventory, whereas generator creates new things.
+    - In many cases, people don't strictly distinsh iterator and generator.
+4. itertools.count(0, 1)
