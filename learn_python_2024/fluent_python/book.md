@@ -139,3 +139,12 @@ https://www.amazon.com/Fluent-Python-Concise-Effective-Programming/dp/1491946008
 1. Implement __enter__() and __exit__() for context manager interface.
 2. Use @contextlib.contextmanager decorator with yield.
 3. Remember to include try final, otherwise exception raised in the body of with block, without restoring the state.
+
+###################################################
+# Chapter 16. Coroutines
+################################################### 
+1. Coroutines for Cooperative Multitask
+2. Coroutine has 4 state: created, running, suspended, closed
+3. Push and pull values from coroutine: x = yield y
+4. Major interface: next(), send(), close(), throw()
+5. yield from: a syntax to allow the client to directly drive subgenerator directly, effectively bypass delegating generators
