@@ -1,10 +1,10 @@
 import argparse
 import socket
 
+HOST = "127.0.0.1"
+PORT = 12345
 
 def server():
-    HOST = "127.0.0.1"
-    PORT = 12345
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((HOST, PORT))
         s.listen()
@@ -34,8 +34,6 @@ def server():
                     conn.sendall(data)
 
 def client():
-    HOST = "127.0.0.01"
-    PORT = 12346
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((HOST, PORT))
         s.sendall(b"Hello, World")
