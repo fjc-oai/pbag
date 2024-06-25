@@ -1,3 +1,4 @@
 def foo():
     pritn("calling foo")
-    return 0
+    return 5
+
