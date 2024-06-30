@@ -1,0 +1,5 @@
+2024-06-30 15:25:17,385 - INFO - asyncio_example.py:26 - start fetching data
+2024-06-30 15:25:22,412 - INFO - asyncio_example.py:42 - fetch data takes 5.03 seconds
+2024-06-30 15:25:22,413 - INFO - asyncio_example.py:33 - processing data...
+2024-06-30 15:25:22,413 - INFO - asyncio_example.py:45 - process data takes 0.00 seconds
+2024-06-30 15:25:22,413 - INFO - asyncio_example.py:46 - result: {'length': 47}
