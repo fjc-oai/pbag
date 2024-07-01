@@ -1,0 +1,129 @@
+import argparse
+import selectors
+import socket
+
+"""
+TODO:
+    - selector
+        - register() args
+        - select() return value
+        - select() timeout
+    - socket nonblocking
+        - abstraction: only read/write is provided. no ordering, or which read to which write
+        - read()
+            - iterative read over the buffer  
+        - write()
+            - iterative write over the buffer, each time the return value is the number of bytes written  
+"""
+
+HOST = "localhost"
+PORT = 12345
+
+
+def server():
+    server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_sock.bind((HOST, PORT))
+    server_sock.listen()
+    server_sock.setblocking(False)
+
+
+    # TODO: support multiple clients
+    read_buffer = ""
+    write_buffer = ""
+
+    def write_cb(conn):
+        nonlocal write_buffer
+        bytes_sent = conn.send(write_buffer.encode())
+        print(f"Sent {bytes_sent} bytes: {write_buffer[:bytes_sent]}")
+        write_buffer = write_buffer[bytes_sent:]
+        if write_buffer:
+            print("Waiting for more data...")
+        else:
+            print("Data sent successfully. Now reading message...")
+            selector.modify(conn, selectors.EVENT_READ, read_cb)
+
+    def read_cb(conn):
+        nonlocal read_buffer
+        nonlocal write_buffer
+        data = conn.recv(8)
+        if data:
+            if "\n" in data.decode():
+                read_buffer += data.decode()
+                print(f"Full message received: {read_buffer}")
+                write_buffer = read_buffer.upper()
+                read_buffer = ""
+                selector.modify(conn, selectors.EVENT_WRITE, write_cb)
+            else:
+                partial_message = data.decode()
+                print(f"Partial message received: {partial_message}")
+                print("Waiting for more data...")
+                read_buffer += partial_message
+        else:
+            print(f"Connection closed by {conn.getpeername()}")
+            selector.unregister(conn)
+            conn.close()
+
+    def accept_cb(server_sock):
+        conn, addr = server_sock.accept()
+        print(f"Accepted connection from {addr}")
+        conn.setblocking(False)
+        selector.register(conn, selectors.EVENT_READ, read_cb)
+
+
+    """
+    class selectors.SelectorKey
+        A SelectorKey is a namedtuple used to associate a file object to its underlying file descriptor, selected event mask and attached data. It is returned by several BaseSelector methods.
+
+        fileobj: File object registered.
+        fd: Underlying file descriptor.
+        events: Events that must be waited for on this file object.
+        data: Optional opaque data associated to this file object: for example, this could be used to store a per-client session ID.
+
+
+    abstractmethod register(fileobj, events, data=None)
+    """
+    selector = selectors.DefaultSelector()
+    selector.register(server_sock, selectors.EVENT_READ, accept_cb)
+    print(f"Server is listening on {HOST}:{PORT}")
+
+    try:
+        while True:
+            # Timeout:
+            #   0 means non-blocking
+            #   > 0 means blocking for that amount of time
+            #   None means infinite blocking
+            events = selector.select(timeout=None)
+            for key, mask in events:
+                callback = key.data
+                callback(key.fileobj)
+    except KeyboardInterrupt:
+        print("Server is shutting down")
+    finally:
+        server_sock.close()
+        selector.close()
+
+
+def client():
+    # Run in blocking mode for simplicity
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((HOST, PORT))
+    print(f"Connected to {HOST}:{PORT}")
+    message = "python is the best language because \n"
+    sock.sendall(message.encode())
+    print(f"Sent: {message}")
+    data = sock.recv(1024)
+    print(f"Received: {data.decode()}")
+
+
+def main():
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("role", choices=["server", "client"])
+    args = argparser.parse_args()
+    if args.role == "server":
+        server()
+    else:
+        client()
+
+
+if __name__ == "__main__":
+    main()
