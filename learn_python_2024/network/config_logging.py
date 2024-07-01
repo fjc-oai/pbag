@@ -1,6 +1,7 @@
 import logging
 import logging.config
 
+TINY_ASYNCIO_LOGGING_LEVEL = "INFO"
 
 def setup_logging():
     logging_config = {
@@ -27,7 +28,7 @@ def setup_logging():
         },
         "loggers": {
             "tiny_asyncio": {
-                "level": "ERROR",
+                "level": TINY_ASYNCIO_LOGGING_LEVEL,
                 "handlers": ["console", "file_handler"],
                 "propagate": False,
             },

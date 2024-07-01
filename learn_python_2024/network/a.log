@@ -1,5 +1,4 @@
-2024-06-30 15:25:17,385 - INFO - asyncio_example.py:26 - start fetching data
-2024-06-30 15:25:22,412 - INFO - asyncio_example.py:42 - fetch data takes 5.03 seconds
-2024-06-30 15:25:22,413 - INFO - asyncio_example.py:33 - processing data...
-2024-06-30 15:25:22,413 - INFO - asyncio_example.py:45 - process data takes 0.00 seconds
-2024-06-30 15:25:22,413 - INFO - asyncio_example.py:46 - result: {'length': 47}
+2024-06-30 21:58:09,220 - INFO - tiny_asyncio.py:244 - Coro main resulted in a future, blocking: True
+2024-06-30 21:58:09,221 - INFO - tiny_asyncio.py:79 - Eventloop: move 0 reader and 1 writer events to ready
+2024-06-30 21:58:09,221 - INFO - tiny_asyncio.py:122 - Socket <socket.socket fd=5, family=2, type=1, proto=0, laddr=('127.0.0.1', 61236), raddr=('127.0.0.1', 12345)> connected successfully
+2024-06-30 21:58:09,221 - INFO - tiny_asyncio.py:252 - Future <tiny_asyncio.Future object at 0x10bcbc450> is done. Wake up coro main

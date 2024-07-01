@@ -16,29 +16,52 @@ from tqdm import tqdm
 - [x] support sleep
 - [x] schedule a task that runs in x seconds later
 - schedule the task running on background periodically
-- async fetch data
+- async fetch data through socket
 - concurrently run multiple tasks
 """
 
 logger = logging.getLogger(__name__)
 
 
-async def fetch_data():
-    logger.info("start fetching data")
+async def fetch_data_dummy(host, port):
+    logger.info(f"start fetching data from {host}:{port}...")
     for _ in tqdm(range(5)):
         await asyncio.sleep(1)
     return "python is the best programming language because"
 
 
+async def fetch_data_http(host, port):
+    if USE_TINY_ASYNCIO:
+        sock = await asyncio.create_connection(host, port)
+        request = "niuleBile"
+        n = await asyncio.sock_sendall(sock, request.encode("utf-8"))
+        print(f"send {n} bytes")
+    else:
+        reader, writer = await asyncio.open_connection(host, port)
+        request = f"GET / HTTP/1.1\r\nHost: {host}\r\n\r\n"
+        writer.write(request.encode("utf-8"))
+        await writer.drain()
+        response = await reader.read(4096)
+        writer.close()
+        await writer.wait_closed()
+        return response.decode("utf-8")
+
+
+
+
 async def process_data(data: str):
     logger.info("processing data...")
     l = len(data)
-    return {"length": l}
+    return {"length": l, "first_50_chars": data[:50]}
 
 
 async def main():
     cur = time.time()
-    data = await fetch_data()
+    # host = "httpbin.org"
+    # port = 80
+    host = "localhost"
+    port = 12345
+    data = await fetch_data_http(host, port)
     after_fetch = time.time()
     logger.info(f"fetch data takes {after_fetch - cur:.2f} seconds")
     result = await process_data(data)

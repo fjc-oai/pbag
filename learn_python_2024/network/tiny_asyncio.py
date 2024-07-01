@@ -1,6 +1,8 @@
 import collections
 import heapq
 import logging
+import selectors
+import socket
 import time
 from typing import Any, Callable, Coroutine, Literal, Sequence
 
@@ -13,6 +15,7 @@ class EventLoop:
         self._waiting: list[Handle] = []  # TODO: what is this used for?
         self._scheduled: list[TimerHandle] = []
         self._stopping = False
+        self._selector = selectors.DefaultSelector() # TODO: play with selectors
 
     def create_task(self, coro: Coroutine) -> "Task":
         task = Task(coro, self)
@@ -22,15 +25,23 @@ class EventLoop:
         handle = Handle(callback, args, self)
         self._ready.append(handle)
         return handle
+    
+    def stop(self):
+        self._stopping = True
 
     def run_until_complete(self, task: "Task") -> Any:
+        def stop_loop_cb(task):
+            logger.info("Task is done, stop the loop")
+            task.get_loop().stop()
+        task.add_done_callback(stop_loop_cb)
         self.run_forever()
         return task.result()
 
     def run_forever(self) -> None:
         # TODO: proper error handling
         itr = 0
-        while self._ready or self._waiting or self._scheduled:
+        # while self._ready or self._waiting or self._scheduled: # TODO: this won't work, e.g. in create_connection, there is no ready or wating events but we cannot stop the loop.
+        while True:
             self._run_once()
             # TODO: support stopping
             if self._stopping:
@@ -45,8 +56,29 @@ class EventLoop:
             self._ready.append(timer_handle)
             n_scheduled_ready += 1
         if n_scheduled_ready:
-            logger.debug(f"Moving {n_scheduled_ready} scheduled events to ready")
+            logger.info(f"Eventloop: move {n_scheduled_ready} scheduled events to ready")
 
+        timeout = None
+        if self._ready:
+            timeout = 0
+        # timeout == 0 means poll and return immediately
+        # timeout == None means wait forever until there is an event
+        n_select_reader_ready = 0
+        n_select_writer_ready = 0
+        event_list = self._selector.select(timeout) # TODO: this is the trick!!!
+        for key, mask in event_list:
+            fileobj, (reader, writer) = key.fileobj, key.data
+            if mask & selectors.EVENT_READ and reader is not None:
+                self._ready.append(reader)
+                n_select_reader_ready += 1
+            if mask & selectors.EVENT_WRITE and writer is not None:
+                self._ready.append(writer)
+                n_select_writer_ready += 1
+
+        if n_select_reader_ready or n_select_writer_ready:
+            logger.info(f"Eventloop: move {n_select_reader_ready} reader and {n_select_writer_ready} writer events to ready")
+
+        logger.debug(f"Eventloop: run {len(self._ready)} ready events")
         while len(self._ready) > 0:
             handle = self._ready.popleft()
             # TODO: support handle is cancelled
@@ -57,7 +89,7 @@ class EventLoop:
 
     def call_later(self, delay: float, callback: Callable, *args) -> "TimerHandle":
         assert delay >= 0
-        logger.debug(f"Register time event to run after {delay} seconds: {callback.__name__}()")
+        logger.info(f"Register time event to run after {delay} seconds: {callback.__name__}()")
         return self.call_at(self.time() + delay, callback, *args)
 
     def call_at(self, when: float, callback: Callable, *args) -> "TimerHandle":
@@ -68,6 +100,68 @@ class EventLoop:
 
     def time(self):
         return time.monotonic()
+
+    def _add_writer(self, fd, callback, *args):
+        handle = Handle(callback, args, self)
+        key = self._selector.get_map().get(fd)
+        assert key is None, f"fd {fd} is already registered"
+        self._selector.register(fd, selectors.EVENT_WRITE, (None, handle))
+        return handle
+
+    def _sock_connect_cb(self, fut, sock, address):
+        assert not fut.done(), "Future shouldn't be done"
+        try:
+            err = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)  # TODO: what is this?
+            if err != 0:
+                raise OSError(err, f"Connect call failed {address}")
+        except (BlockingIOError, InterruptedError):
+            pass
+        except BaseException as exc:
+            fut.set_exception(exc)  # TODO: implement this
+        else:
+            logger.info(f"Socket {sock} connected successfully")
+            fut.set_result(None)
+
+    async def create_connection(self, host: str, port: int):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setblocking(False)
+        fd = sock.fileno()
+        fut = self.create_future()
+        try:
+            sock.connect((host, port))
+        except (BlockingIOError, InterruptedError):  # TODO: what are these exceptions?
+            handle = self._add_writer(fd, self._sock_connect_cb, fut, sock, (host, port))
+            # TODO: do we need to do fut.add_done_callback(self._sock_write_done) ?
+        else:
+            assert False, "Shouldn't reach here"
+            fut.set_result(None)
+        await fut # TODO: make fut.set_result(sock)
+        return sock
+    
+    async def sock_sendall(self, sock: socket.socket, data: bytes|str) -> None:
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+        assert sock.gettimeout() == 0, "Socket must be non-blocking"
+        try: 
+            n = sock.send(data)
+        except (BlockingIOError, InterruptedError): # TODO: look into details
+            n = 0
+        
+        # TODO: should we enforce this?
+        # if n == len(data):
+        #     assert False, "Shouldn't reach here"
+        
+        # TODO: implement iteratively sending the remaining data
+        fut = self.create_future()
+        fd = sock.fileno()
+        # TODO: does the same sock (e.g. connect, write) return the same fd?
+        def write_cb(fut, sock):
+            logger.info(f"Socket {sock} write done")
+            fut.set_result(len(data))
+        handle = self._add_writer(fd, write_cb, fut, sock)
+        # TODO: do we need to do fut.add_done_callback(self._sock_write_done) ?
+        return await fut
+
 
 
 _event_loop = None
@@ -124,6 +218,9 @@ class Future:
             yield self
         assert self.done(), "Future should be done"
         return self.result()
+    
+    def get_loop(self):
+        return self._loop
 
 
 class Task(Future):
@@ -138,13 +235,13 @@ class Task(Future):
         try:
             result = self._coro.send(None)  # TODO: check result
         except StopIteration as exc:
-            logger.debug(f"Coro {self._coro.__name__} is done")
+            logger.info(f"Coro {self._coro.__name__} is done")
             super().set_result(exc.value)
             return
         else:
             blocking = getattr(result, "_asyncio_future_blocking", None)
             if blocking is not None:
-                logger.debug(
+                logger.info(
                     f"Coro {self._coro.__name__} resulted in a future, blocking: {blocking}"
                 )
                 assert blocking is True, "Future should be blocking"
@@ -152,7 +249,7 @@ class Task(Future):
                 result._asyncio_future_blocking = False  # TODO: why?
 
                 def wakeup_cb(fut):
-                    logger.debug(f"Future {fut} is done. Wake up coro {self._coro.__name__}")
+                    logger.info(f"Future {fut} is done. Wake up coro {self._coro.__name__}")
                     self.__wakeup(fut)
 
                 result.add_done_callback(wakeup_cb)
@@ -220,6 +317,9 @@ async def sleep(delay: float, result: Any = None) -> None:
     - future vs task:
         - future: general awaitable object
         - task: coro which can be called with send(None)?
+
+    - eventloop.run_until_complete(task) uses task's completion to stop the eventloop. before it stops, it keeps polling the eventloop to run the ready events
+        does it mean the eventloop is busy looping until the task is done? thus will take 100% CPU? assuming select timeout is 0, and there is only one sleep event scheduled.
     """
     loop = get_event_loop()
     future = loop.create_future()
@@ -230,3 +330,12 @@ async def sleep(delay: float, result: Any = None) -> None:
 
     loop.call_later(delay, set_result)
     return await future
+
+async def create_connection(host: str, port: int):
+    loop = get_event_loop()
+    sock = await loop.create_connection(host, port)
+    return sock
+
+async def sock_sendall(sock: socket.socket, data: bytes|str) -> None:
+    loop = get_event_loop()
+    return await loop.sock_sendall(sock, data)
