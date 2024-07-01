@@ -415,3 +415,17 @@ def create_periodical_task(fn: Callable, interval: float):
 
     loop = get_event_loop()
     loop.call_later(interval, _wrapper)
+
+
+async def gather(*coros: Coroutine):
+    loop = get_event_loop()
+    fut = loop.create_future()
+    results = []
+    async def wrapper(coro):
+        result = await coro
+        results.append(result)
+        if len(results) == len(coros):
+            fut.set_result(results)
+    for coro in coros:
+        loop.create_task(wrapper(coro))
+    return await fut

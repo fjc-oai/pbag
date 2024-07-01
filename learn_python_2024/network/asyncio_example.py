@@ -18,7 +18,7 @@ from tqdm import tqdm
 - [x] schedule a task that runs in x seconds later
 - [x] schedule the task running on background periodically
 - [x] async fetch data through socket
-- concurrently run multiple tasks
+- [x] concurrently run multiple tasks
 """
 
 logger = logging.getLogger(__name__)
@@ -87,6 +87,25 @@ async def main():
 #     for i in range(10):
 #         logger.info(f"main loop idling: {i}")
 #         await asyncio.sleep(1)
+
+
+async def fn(dur):
+    logger.info(f"fn start: sleep {dur} seconds")
+    await asyncio.sleep(dur)
+    logger.info("fn end: slept {dur} seconds")
+    return dur
+
+async def main():
+    st = time.time()
+    logger.info("main start")
+    res = await asyncio.gather(
+        fn(3),
+        fn(5),
+        fn(2),
+    )
+    logger.info("main end")
+    logger.info(f"res: {res}")
+    logger.info(f"main takes {time.time() - st} seconds")
 
 
 if __name__ == "__main__":
