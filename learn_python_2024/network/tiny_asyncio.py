@@ -45,13 +45,13 @@ class EventLoop:
         # while self._ready or self._waiting or self._scheduled: # TODO: this won't work, e.g. in create_connection, there is no ready or wating events but we cannot stop the loop.
         while True:
             self._run_once()
-            # TODO: support stopping
             if self._stopping:
                 break
             itr += 1
 
     def _run_once(self) -> None:
         n_scheduled_ready = 0
+        logger.debug(f"Running run_once with {len(self._scheduled)} scheduled events")
         while self._scheduled and self._scheduled[0].when() <= self.time():
             timer_handle = heapq.heappop(self._scheduled)
             timer_handle._scheduled = False  # why?
@@ -61,8 +61,11 @@ class EventLoop:
             logger.info(f"Eventloop: move {n_scheduled_ready} scheduled events to ready")
 
         timeout = None
-        if self._ready:
+        if self._ready or self._stopping:
             timeout = 0
+        elif self._scheduled:
+            # Otherwise, select will block forever, e.g. prevent next scheduled event to run
+            timeout = self._scheduled[0].when() - self.time()
         # timeout == 0 means poll and return immediately
         # timeout == None means wait forever until there is an event
         n_select_reader_ready = 0
@@ -317,6 +320,34 @@ class TimerHandle(Handle):
 
     def when(self) -> float:
         return self._when
+
+    def __lt__(self, other):
+        if isinstance(other, TimerHandle):
+            return self._when < other._when
+        return NotImplemented
+
+    # def __le__(self, other):
+    #     if isinstance(other, TimerHandle):
+    #         return self._when < other._when or self.__eq__(other)
+    #     return NotImplemented
+
+    # def __gt__(self, other):
+    #     if isinstance(other, TimerHandle):
+    #         return self._when > other._when
+    #     return NotImplemented
+
+    # def __ge__(self, other):
+    #     if isinstance(other, TimerHandle):
+    #         return self._when > other._when or self.__eq__(other)
+    #     return NotImplemented
+
+    # def __eq__(self, other):
+    #     if isinstance(other, TimerHandle):
+    #         return (self._when == other._when and
+    #                 self._callback == other._callback and
+    #                 self._args == other._args and
+    #                 self._cancelled == other._cancelled)
+    #     return NotImplemented
 
 
 def run(coro: Coroutine):

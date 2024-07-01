@@ -16,7 +16,7 @@ from tqdm import tqdm
 - [x] use asyncio.run() to run the main function
 - [x] support sleep
 - [x] schedule a task that runs in x seconds later
-- schedule the task running on background periodically
+- [x] schedule the task running on background periodically
 - [x] async fetch data through socket
 - concurrently run multiple tasks
 """
@@ -81,6 +81,12 @@ async def main():
         logger.info(f"main loop idling: {i}")
         await asyncio.sleep(1)
     return 0
+
+
+# async def main():
+#     for i in range(10):
+#         logger.info(f"main loop idling: {i}")
+#         await asyncio.sleep(1)
 
 
 if __name__ == "__main__":

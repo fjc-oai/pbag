@@ -1,21 +1,22 @@
-2024-07-01 14:46:18,182 - INFO - tiny_asyncio.py:270 - Coro main resulted in a future, blocking: True
-2024-07-01 14:46:18,258 - INFO - tiny_asyncio.py:79 - Eventloop: move 1 select writer events to ready
-2024-07-01 14:46:18,258 - INFO - tiny_asyncio.py:131 - Socket <socket.socket fd=5, family=2, type=1, proto=0, laddr=('192.168.1.238', 50661), raddr=('3.233.52.245', 80)> successfully connected to ('httpbin.org', 80)
-2024-07-01 14:46:18,258 - INFO - tiny_asyncio.py:139 - Socket connect done. Future result set. Unregister from the selector.
-2024-07-01 14:46:18,258 - INFO - tiny_asyncio.py:278 - Future <tiny_asyncio.Future object at 0x10df9c0d0> is done. Wake up coro main
-2024-07-01 14:46:18,258 - INFO - tiny_asyncio.py:270 - Coro main resulted in a future, blocking: True
-2024-07-01 14:46:18,258 - INFO - tiny_asyncio.py:79 - Eventloop: move 1 select writer events to ready
-2024-07-01 14:46:18,259 - INFO - tiny_asyncio.py:155 - All data sent: 59 bytes. Unregister the socket from the selector
-2024-07-01 14:46:18,259 - INFO - tiny_asyncio.py:278 - Future <tiny_asyncio.Future object at 0x10defffd0> is done. Wake up coro main
-2024-07-01 14:46:18,259 - INFO - asyncio_example.py:39 - sent 59 bytes
-2024-07-01 14:46:18,259 - INFO - tiny_asyncio.py:270 - Coro main resulted in a future, blocking: True
-2024-07-01 14:46:18,768 - INFO - tiny_asyncio.py:83 - Eventloop: move 1 select reader events to ready
-2024-07-01 14:46:18,769 - INFO - tiny_asyncio.py:178 - Socket <socket.socket fd=5, family=2, type=1, proto=0, laddr=('192.168.1.238', 50661), raddr=('3.233.52.245', 80)> received 425 bytes. Continue to receive more data...
-2024-07-01 14:46:18,770 - INFO - tiny_asyncio.py:83 - Eventloop: move 1 select reader events to ready
-2024-07-01 14:46:18,770 - INFO - tiny_asyncio.py:180 - Socket <socket.socket fd=5, family=2, type=1, proto=0, laddr=('192.168.1.238', 50661), raddr=('3.233.52.245', 80)> received 425 bytes. Unregister the socket from the selector
-2024-07-01 14:46:18,770 - INFO - tiny_asyncio.py:278 - Future <tiny_asyncio.Future object at 0x10df9c0d0> is done. Wake up coro main
-2024-07-01 14:46:18,770 - INFO - asyncio_example.py:41 - received HTTP/1.1 200 OK
-Date: Mon, 01 Jul 2024 21:46:18 GMT
+2024-07-01 15:12:23,522 - INFO - tiny_asyncio.py:101 - Register time event to run after 3 seconds: _wrapper()
+2024-07-01 15:12:23,554 - INFO - tiny_asyncio.py:273 - Coro main resulted in a future, blocking: True
+2024-07-01 15:12:23,632 - INFO - tiny_asyncio.py:82 - Eventloop: move 1 select writer events to ready
+2024-07-01 15:12:23,632 - INFO - tiny_asyncio.py:134 - Socket <socket.socket fd=5, family=2, type=1, proto=0, laddr=('192.168.1.238', 51388), raddr=('44.212.150.222', 80)> successfully connected to ('httpbin.org', 80)
+2024-07-01 15:12:23,632 - INFO - tiny_asyncio.py:142 - Socket connect done. Future result set. Unregister from the selector.
+2024-07-01 15:12:23,632 - INFO - tiny_asyncio.py:281 - Future <tiny_asyncio.Future object at 0x10a1d00d0> is done. Wake up coro main
+2024-07-01 15:12:23,632 - INFO - tiny_asyncio.py:273 - Coro main resulted in a future, blocking: True
+2024-07-01 15:12:23,632 - INFO - tiny_asyncio.py:82 - Eventloop: move 1 select writer events to ready
+2024-07-01 15:12:23,632 - INFO - tiny_asyncio.py:158 - All data sent: 59 bytes. Unregister the socket from the selector
+2024-07-01 15:12:23,633 - INFO - tiny_asyncio.py:281 - Future <tiny_asyncio.Future object at 0x109f53510> is done. Wake up coro main
+2024-07-01 15:12:23,633 - INFO - asyncio_example.py:40 - sent 59 bytes
+2024-07-01 15:12:23,633 - INFO - tiny_asyncio.py:273 - Coro main resulted in a future, blocking: True
+2024-07-01 15:12:23,712 - INFO - tiny_asyncio.py:86 - Eventloop: move 1 select reader events to ready
+2024-07-01 15:12:23,712 - INFO - tiny_asyncio.py:181 - Socket <socket.socket fd=5, family=2, type=1, proto=0, laddr=('192.168.1.238', 51388), raddr=('44.212.150.222', 80)> received 425 bytes. Continue to receive more data...
+2024-07-01 15:12:23,713 - INFO - tiny_asyncio.py:86 - Eventloop: move 1 select reader events to ready
+2024-07-01 15:12:23,713 - INFO - tiny_asyncio.py:183 - Socket <socket.socket fd=5, family=2, type=1, proto=0, laddr=('192.168.1.238', 51388), raddr=('44.212.150.222', 80)> received 425 bytes. Unregister the socket from the selector
+2024-07-01 15:12:23,713 - INFO - tiny_asyncio.py:281 - Future <tiny_asyncio.Future object at 0x10a1d00d0> is done. Wake up coro main
+2024-07-01 15:12:23,713 - INFO - asyncio_example.py:42 - received HTTP/1.1 200 OK
+Date: Mon, 01 Jul 2024 22:12:23 GMT
 Content-Type: application/json
 Content-Length: 200
 Connection: close
@@ -27,15 +28,75 @@ Access-Control-Allow-Credentials: true
   "args": {}, 
   "headers": {
     "Host": "httpbin.org", 
-    "X-Amzn-Trace-Id": "Root=1-668323aa-39372b104bee468d3eade8b1"
+    "X-Amzn-Trace-Id": "Root=1-668329c7-393b1e4a7f5312e122430362"
   }, 
   "origin": "162.226.174.176", 
   "url": "http://httpbin.org/get"
 }
 
-2024-07-01 14:46:18,771 - INFO - asyncio_example.py:70 - fetch data takes 0.63 seconds
-2024-07-01 14:46:18,772 - INFO - asyncio_example.py:57 - processing data...
-2024-07-01 14:46:18,772 - INFO - asyncio_example.py:73 - process data takes 0.00 seconds
-2024-07-01 14:46:18,772 - INFO - asyncio_example.py:74 - result: {'length': 425, 'first_50_chars': 'HTTP/1.1 200 OK\r\nDate: Mon, 01 Jul 2024 21:46:18 G'}
-2024-07-01 14:46:18,773 - INFO - tiny_asyncio.py:264 - Coro main is done
-2024-07-01 14:46:18,773 - INFO - tiny_asyncio.py:35 - Task is done, stop the loop
+2024-07-01 15:12:23,713 - INFO - asyncio_example.py:75 - fetch data takes 0.19 seconds
+2024-07-01 15:12:23,713 - INFO - asyncio_example.py:56 - processing data...
+2024-07-01 15:12:23,713 - INFO - asyncio_example.py:78 - process data takes 0.00 seconds
+2024-07-01 15:12:23,714 - INFO - asyncio_example.py:79 - result: {'length': 425, 'first_50_chars': 'HTTP/1.1 200 OK\r\nDate: Mon, 01 Jul 2024 22:12:23 G'}
+2024-07-01 15:12:23,714 - INFO - asyncio_example.py:81 - main loop idling: 0
+2024-07-01 15:12:23,714 - INFO - tiny_asyncio.py:101 - Register time event to run after 1 seconds: set_result()
+2024-07-01 15:12:23,714 - INFO - tiny_asyncio.py:273 - Coro main resulted in a future, blocking: True
+2024-07-01 15:12:24,715 - INFO - tiny_asyncio.py:61 - Eventloop: move 1 scheduled events to ready
+2024-07-01 15:12:24,716 - INFO - tiny_asyncio.py:281 - Future <tiny_asyncio.Future object at 0x109f53510> is done. Wake up coro main
+2024-07-01 15:12:24,716 - INFO - asyncio_example.py:81 - main loop idling: 1
+2024-07-01 15:12:24,717 - INFO - tiny_asyncio.py:101 - Register time event to run after 1 seconds: set_result()
+2024-07-01 15:12:24,717 - INFO - tiny_asyncio.py:273 - Coro main resulted in a future, blocking: True
+2024-07-01 15:12:25,718 - INFO - tiny_asyncio.py:61 - Eventloop: move 1 scheduled events to ready
+2024-07-01 15:12:25,719 - INFO - tiny_asyncio.py:281 - Future <tiny_asyncio.Future object at 0x10a1d00d0> is done. Wake up coro main
+2024-07-01 15:12:25,719 - INFO - asyncio_example.py:81 - main loop idling: 2
+2024-07-01 15:12:25,720 - INFO - tiny_asyncio.py:101 - Register time event to run after 1 seconds: set_result()
+2024-07-01 15:12:25,720 - INFO - tiny_asyncio.py:273 - Coro main resulted in a future, blocking: True
+2024-07-01 15:12:26,524 - INFO - tiny_asyncio.py:61 - Eventloop: move 1 scheduled events to ready
+2024-07-01 15:12:26,525 - INFO - tiny_asyncio.py:101 - Register time event to run after 3 seconds: _wrapper()
+2024-07-01 15:12:26,525 - INFO - asyncio_example.py:62 - health check: everything is fine
+2024-07-01 15:12:26,721 - INFO - tiny_asyncio.py:61 - Eventloop: move 1 scheduled events to ready
+2024-07-01 15:12:26,722 - INFO - tiny_asyncio.py:281 - Future <tiny_asyncio.Future object at 0x109f53510> is done. Wake up coro main
+2024-07-01 15:12:26,722 - INFO - asyncio_example.py:81 - main loop idling: 3
+2024-07-01 15:12:26,722 - INFO - tiny_asyncio.py:101 - Register time event to run after 1 seconds: set_result()
+2024-07-01 15:12:26,722 - INFO - tiny_asyncio.py:273 - Coro main resulted in a future, blocking: True
+2024-07-01 15:12:27,724 - INFO - tiny_asyncio.py:61 - Eventloop: move 1 scheduled events to ready
+2024-07-01 15:12:27,724 - INFO - tiny_asyncio.py:281 - Future <tiny_asyncio.Future object at 0x10a1d00d0> is done. Wake up coro main
+2024-07-01 15:12:27,725 - INFO - asyncio_example.py:81 - main loop idling: 4
+2024-07-01 15:12:27,725 - INFO - tiny_asyncio.py:101 - Register time event to run after 1 seconds: set_result()
+2024-07-01 15:12:27,725 - INFO - tiny_asyncio.py:273 - Coro main resulted in a future, blocking: True
+2024-07-01 15:12:28,726 - INFO - tiny_asyncio.py:61 - Eventloop: move 1 scheduled events to ready
+2024-07-01 15:12:28,727 - INFO - tiny_asyncio.py:281 - Future <tiny_asyncio.Future object at 0x109f53510> is done. Wake up coro main
+2024-07-01 15:12:28,727 - INFO - asyncio_example.py:81 - main loop idling: 5
+2024-07-01 15:12:28,727 - INFO - tiny_asyncio.py:101 - Register time event to run after 1 seconds: set_result()
+2024-07-01 15:12:28,728 - INFO - tiny_asyncio.py:273 - Coro main resulted in a future, blocking: True
+2024-07-01 15:12:29,526 - INFO - tiny_asyncio.py:61 - Eventloop: move 1 scheduled events to ready
+2024-07-01 15:12:29,527 - INFO - tiny_asyncio.py:101 - Register time event to run after 3 seconds: _wrapper()
+2024-07-01 15:12:29,527 - INFO - asyncio_example.py:62 - health check: everything is fine
+2024-07-01 15:12:29,729 - INFO - tiny_asyncio.py:61 - Eventloop: move 1 scheduled events to ready
+2024-07-01 15:12:29,730 - INFO - tiny_asyncio.py:281 - Future <tiny_asyncio.Future object at 0x10a1d00d0> is done. Wake up coro main
+2024-07-01 15:12:29,730 - INFO - asyncio_example.py:81 - main loop idling: 6
+2024-07-01 15:12:29,730 - INFO - tiny_asyncio.py:101 - Register time event to run after 1 seconds: set_result()
+2024-07-01 15:12:29,730 - INFO - tiny_asyncio.py:273 - Coro main resulted in a future, blocking: True
+2024-07-01 15:12:30,731 - INFO - tiny_asyncio.py:61 - Eventloop: move 1 scheduled events to ready
+2024-07-01 15:12:30,732 - INFO - tiny_asyncio.py:281 - Future <tiny_asyncio.Future object at 0x109f53510> is done. Wake up coro main
+2024-07-01 15:12:30,732 - INFO - asyncio_example.py:81 - main loop idling: 7
+2024-07-01 15:12:30,733 - INFO - tiny_asyncio.py:101 - Register time event to run after 1 seconds: set_result()
+2024-07-01 15:12:30,733 - INFO - tiny_asyncio.py:273 - Coro main resulted in a future, blocking: True
+2024-07-01 15:12:31,734 - INFO - tiny_asyncio.py:61 - Eventloop: move 1 scheduled events to ready
+2024-07-01 15:12:31,735 - INFO - tiny_asyncio.py:281 - Future <tiny_asyncio.Future object at 0x10a1d00d0> is done. Wake up coro main
+2024-07-01 15:12:31,735 - INFO - asyncio_example.py:81 - main loop idling: 8
+2024-07-01 15:12:31,735 - INFO - tiny_asyncio.py:101 - Register time event to run after 1 seconds: set_result()
+2024-07-01 15:12:31,735 - INFO - tiny_asyncio.py:273 - Coro main resulted in a future, blocking: True
+2024-07-01 15:12:32,528 - INFO - tiny_asyncio.py:61 - Eventloop: move 1 scheduled events to ready
+2024-07-01 15:12:32,529 - INFO - tiny_asyncio.py:101 - Register time event to run after 3 seconds: _wrapper()
+2024-07-01 15:12:32,529 - INFO - asyncio_example.py:62 - health check: everything is fine
+2024-07-01 15:12:32,737 - INFO - tiny_asyncio.py:61 - Eventloop: move 1 scheduled events to ready
+2024-07-01 15:12:32,737 - INFO - tiny_asyncio.py:281 - Future <tiny_asyncio.Future object at 0x109f53510> is done. Wake up coro main
+2024-07-01 15:12:32,737 - INFO - asyncio_example.py:81 - main loop idling: 9
+2024-07-01 15:12:32,738 - INFO - tiny_asyncio.py:101 - Register time event to run after 1 seconds: set_result()
+2024-07-01 15:12:32,738 - INFO - tiny_asyncio.py:273 - Coro main resulted in a future, blocking: True
+2024-07-01 15:12:33,739 - INFO - tiny_asyncio.py:61 - Eventloop: move 1 scheduled events to ready
+2024-07-01 15:12:33,740 - INFO - tiny_asyncio.py:281 - Future <tiny_asyncio.Future object at 0x10a1d00d0> is done. Wake up coro main
+2024-07-01 15:12:33,740 - INFO - asyncio_example.py:81 - main loop idling: 10
+2024-07-01 15:12:33,740 - INFO - tiny_asyncio.py:101 - Register time event to run after 1 seconds: set_result()
+2024-07-01 15:12:33,741 - INFO - tiny_asyncio.py:273 - Coro main resulted in a future, blocking: True
