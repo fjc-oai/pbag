@@ -374,3 +374,13 @@ async def sock_recv(sock: socket.socket) -> str:
     loop = get_event_loop()
     data = await loop.sock_recv(sock)
     return data.decode("utf-8")
+
+
+def create_periodical_task(fn: Callable, interval: float):
+    def _wrapper():
+        loop = get_event_loop()
+        loop.call_later(interval, _wrapper)
+        fn()
+
+    loop = get_event_loop()
+    loop.call_later(interval, _wrapper)

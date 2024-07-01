@@ -4,6 +4,7 @@ if USE_TINY_ASYNCIO:
 else:
     import asyncio
 
+import itertools
 import logging
 import time
 
@@ -51,15 +52,19 @@ async def fetch_data_http(host, port):
         return response.decode("utf-8")
 
 
-
-
 async def process_data(data: str):
     logger.info("processing data...")
     l = len(data)
     return {"length": l, "first_50_chars": data[:50]}
 
 
+def health_check():
+    logger.info("health check: everything is fine")
+
 async def main():
+    if USE_TINY_ASYNCIO:
+        asyncio.create_periodical_task(health_check, 3)
+
     cur = time.time()
     host = "httpbin.org"
     port = 80
@@ -72,6 +77,9 @@ async def main():
     after_process = time.time()
     logger.info(f"process data takes {after_process - after_fetch:.2f} seconds")
     logger.info(f"result: {result}")
+    for i in range(100):
+        logger.info(f"main loop idling: {i}")
+        await asyncio.sleep(1)
     return 0
 
 
