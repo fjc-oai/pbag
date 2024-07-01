@@ -1,4 +1,5 @@
 import collections
+import functools
 import heapq
 import logging
 import selectors
@@ -15,7 +16,7 @@ class EventLoop:
         self._waiting: list[Handle] = []  # TODO: what is this used for?
         self._scheduled: list[TimerHandle] = []
         self._stopping = False
-        self._selector = selectors.DefaultSelector() # TODO: play with selectors
+        self._selector = selectors.DefaultSelector()  # TODO: play with selectors
 
     def create_task(self, coro: Coroutine) -> "Task":
         task = Task(coro, self)
@@ -25,7 +26,7 @@ class EventLoop:
         handle = Handle(callback, args, self)
         self._ready.append(handle)
         return handle
-    
+
     def stop(self):
         self._stopping = True
 
@@ -33,6 +34,7 @@ class EventLoop:
         def stop_loop_cb(task):
             logger.info("Task is done, stop the loop")
             task.get_loop().stop()
+
         task.add_done_callback(stop_loop_cb)
         self.run_forever()
         return task.result()
@@ -65,18 +67,22 @@ class EventLoop:
         # timeout == None means wait forever until there is an event
         n_select_reader_ready = 0
         n_select_writer_ready = 0
-        event_list = self._selector.select(timeout) # TODO: this is the trick!!!
+        event_list = self._selector.select(timeout)  # TODO: this is the trick!!!
         for key, mask in event_list:
-            fileobj, (reader, writer) = key.fileobj, key.data
-            if mask & selectors.EVENT_READ and reader is not None:
-                self._ready.append(reader)
-                n_select_reader_ready += 1
-            if mask & selectors.EVENT_WRITE and writer is not None:
-                self._ready.append(writer)
+            sock, cb, events, mask = key.fileobj, key.data, key.events, mask
+            self._ready.append(cb)
+            if mask & selectors.EVENT_WRITE:
                 n_select_writer_ready += 1
-
-        if n_select_reader_ready or n_select_writer_ready:
-            logger.info(f"Eventloop: move {n_select_reader_ready} reader and {n_select_writer_ready} writer events to ready")
+            if mask & selectors.EVENT_READ:
+                n_select_reader_ready += 1
+        if n_select_writer_ready:
+            logger.info(
+                f"Eventloop: move {n_select_writer_ready} select writer events to ready"
+            )
+        if n_select_reader_ready:
+            logger.info(
+                f"Eventloop: move {n_select_reader_ready} select reader events to ready"
+            )
 
         logger.debug(f"Eventloop: run {len(self._ready)} ready events")
         while len(self._ready) > 0:
@@ -100,28 +106,7 @@ class EventLoop:
 
     def time(self):
         return time.monotonic()
-
-    def _add_writer(self, fd, callback, *args):
-        handle = Handle(callback, args, self)
-        key = self._selector.get_map().get(fd)
-        assert key is None, f"fd {fd} is already registered"
-        self._selector.register(fd, selectors.EVENT_WRITE, (None, handle))
-        return handle
-
-    def _sock_connect_cb(self, fut, sock, address):
-        assert not fut.done(), "Future shouldn't be done"
-        try:
-            err = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)  # TODO: what is this?
-            if err != 0:
-                raise OSError(err, f"Connect call failed {address}")
-        except (BlockingIOError, InterruptedError):
-            pass
-        except BaseException as exc:
-            fut.set_exception(exc)  # TODO: implement this
-        else:
-            logger.info(f"Socket {sock} connected successfully")
-            fut.set_result(None)
-
+    
     async def create_connection(self, host: str, port: int):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setblocking(False)
@@ -129,39 +114,80 @@ class EventLoop:
         fut = self.create_future()
         try:
             sock.connect((host, port))
-        except (BlockingIOError, InterruptedError):  # TODO: what are these exceptions?
-            handle = self._add_writer(fd, self._sock_connect_cb, fut, sock, (host, port))
-            # TODO: do we need to do fut.add_done_callback(self._sock_write_done) ?
+        except (
+            BlockingIOError,
+            InterruptedError,
+        ):  # TODO: why using these exceptions works as the intention?
+
+            def sock_connect_cb(fut, sock, address):
+                assert not fut.done(), "Future shouldn't be done yet"
+                try:
+                    err = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+                    if err != 0:
+                        raise OSError(err, f"Connect call failed {address}")
+                except (BlockingIOError, InterruptedError):
+                    pass
+                else:
+                    logger.info(f"Socket {sock} successfully connected to {address}")
+                    fut.set_result(sock)
+
+            cb_handle = Handle(sock_connect_cb, (fut, sock, (host, port)), self)
+            assert sock not in self._selector.get_map(), "Socket shouldn't be registered"
+            self._selector.register(sock, selectors.EVENT_WRITE | selectors.EVENT_READ, cb_handle)
+
+            def sock_connect_fut_cb(fut):
+                logger.info("Socket connect done. Future result set. Unregister from the selector.")
+                self._selector.unregister(sock)
+
+            fut.add_done_callback(sock_connect_fut_cb)
         else:
             assert False, "Shouldn't reach here"
             fut.set_result(None)
-        await fut # TODO: make fut.set_result(sock)
+        await fut  # TODO: make fut.set_result(sock)
         return sock
     
-    async def sock_sendall(self, sock: socket.socket, data: bytes|str) -> None:
-        if isinstance(data, str):
-            data = data.encode("utf-8")
-        assert sock.gettimeout() == 0, "Socket must be non-blocking"
-        try: 
+    async def sock_sendall(self, sock: socket.socket, data: bytes) -> int:
+        # TODO: use sock.shutdown(WR) to indicate the end of the data
+        length = len(data)
+        def sock_send_cb(sock, data, fut):
             n = sock.send(data)
-        except (BlockingIOError, InterruptedError): # TODO: look into details
-            n = 0
-        
-        # TODO: should we enforce this?
-        # if n == len(data):
-        #     assert False, "Shouldn't reach here"
-        
-        # TODO: implement iteratively sending the remaining data
+            if n == len(data):
+                logger.info(f"All data sent: {length} bytes. Unregister the socket from the selector")
+                # sock.shutdown(socket.SHUT_WR) # TODO this seems not the correct way. Seems website, e.g. httpbin.org, uses \r\n\r\n as the delimiter
+                assert not fut.done(), "Future shouldn't be done yet"
+                fut.set_result(length)
+                assert sock in self._selector.get_map(), "Socket should be registered"
+                self._selector.unregister(sock)
+            else:
+                logger.info(f"Partial data sent: {n} bytes. Register the socket to send the rest of the data.")
+                cb = functools.partial(sock_send_cb, sock, data[n:], fut)
+                handle = Handle(cb, (), self)
+                self._selector.modify(sock, selectors.EVENT_WRITE, handle)
         fut = self.create_future()
-        fd = sock.fileno()
-        # TODO: does the same sock (e.g. connect, write) return the same fd?
-        def write_cb(fut, sock):
-            logger.info(f"Socket {sock} write done")
-            fut.set_result(len(data))
-        handle = self._add_writer(fd, write_cb, fut, sock)
-        # TODO: do we need to do fut.add_done_callback(self._sock_write_done) ?
+        cb = functools.partial(sock_send_cb, sock, data, fut)
+        handle = Handle(cb, (), self)
+        self._selector.register(sock, selectors.EVENT_WRITE, handle)
         return await fut
-
+            
+    async def sock_recv(self, sock: socket.socket) -> bytes:
+        def sock_recv_cb(sock, buf, fut):
+            SIZE = 1024
+            data = sock.recv(SIZE)
+            if data:
+                buf.extend(data)
+                logger.info(f"Socket {sock} received {len(buf)} bytes. Continue to receive more data...")
+            else:
+                logger.info(f"Socket {sock} received {len(buf)} bytes. Unregister the socket from the selector")
+                assert not fut.done(), "Future shouldn't be done yet"
+                fut.set_result(bytes(buf))
+                assert sock in self._selector.get_map(), "Socket should be registered"
+                self._selector.unregister(sock)
+        fut = self.create_future()
+        buf = bytearray()
+        cb = functools.partial(sock_recv_cb, sock, buf, fut)
+        handle = Handle(cb, (), self)
+        self._selector.register(sock, selectors.EVENT_READ, handle)
+        return await fut
 
 
 _event_loop = None
@@ -218,7 +244,7 @@ class Future:
             yield self
         assert self.done(), "Future should be done"
         return self.result()
-    
+
     def get_loop(self):
         return self._loop
 
@@ -331,11 +357,20 @@ async def sleep(delay: float, result: Any = None) -> None:
     loop.call_later(delay, set_result)
     return await future
 
+
 async def create_connection(host: str, port: int):
     loop = get_event_loop()
     sock = await loop.create_connection(host, port)
     return sock
 
-async def sock_sendall(sock: socket.socket, data: bytes|str) -> None:
+
+async def sock_sendall(sock: socket.socket, data: bytes | str) -> int:
+    data = data.encode("utf-8") if isinstance(data, str) else data
+    # sock.send(data)
     loop = get_event_loop()
     return await loop.sock_sendall(sock, data)
+
+async def sock_recv(sock: socket.socket) -> str:
+    loop = get_event_loop()
+    data = await loop.sock_recv(sock)
+    return data.decode("utf-8")

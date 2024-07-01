@@ -1,4 +1,41 @@
-2024-06-30 21:58:09,220 - INFO - tiny_asyncio.py:244 - Coro main resulted in a future, blocking: True
-2024-06-30 21:58:09,221 - INFO - tiny_asyncio.py:79 - Eventloop: move 0 reader and 1 writer events to ready
-2024-06-30 21:58:09,221 - INFO - tiny_asyncio.py:122 - Socket <socket.socket fd=5, family=2, type=1, proto=0, laddr=('127.0.0.1', 61236), raddr=('127.0.0.1', 12345)> connected successfully
-2024-06-30 21:58:09,221 - INFO - tiny_asyncio.py:252 - Future <tiny_asyncio.Future object at 0x10bcbc450> is done. Wake up coro main
+2024-07-01 14:46:18,182 - INFO - tiny_asyncio.py:270 - Coro main resulted in a future, blocking: True
+2024-07-01 14:46:18,258 - INFO - tiny_asyncio.py:79 - Eventloop: move 1 select writer events to ready
+2024-07-01 14:46:18,258 - INFO - tiny_asyncio.py:131 - Socket <socket.socket fd=5, family=2, type=1, proto=0, laddr=('192.168.1.238', 50661), raddr=('3.233.52.245', 80)> successfully connected to ('httpbin.org', 80)
+2024-07-01 14:46:18,258 - INFO - tiny_asyncio.py:139 - Socket connect done. Future result set. Unregister from the selector.
+2024-07-01 14:46:18,258 - INFO - tiny_asyncio.py:278 - Future <tiny_asyncio.Future object at 0x10df9c0d0> is done. Wake up coro main
+2024-07-01 14:46:18,258 - INFO - tiny_asyncio.py:270 - Coro main resulted in a future, blocking: True
+2024-07-01 14:46:18,258 - INFO - tiny_asyncio.py:79 - Eventloop: move 1 select writer events to ready
+2024-07-01 14:46:18,259 - INFO - tiny_asyncio.py:155 - All data sent: 59 bytes. Unregister the socket from the selector
+2024-07-01 14:46:18,259 - INFO - tiny_asyncio.py:278 - Future <tiny_asyncio.Future object at 0x10defffd0> is done. Wake up coro main
+2024-07-01 14:46:18,259 - INFO - asyncio_example.py:39 - sent 59 bytes
+2024-07-01 14:46:18,259 - INFO - tiny_asyncio.py:270 - Coro main resulted in a future, blocking: True
+2024-07-01 14:46:18,768 - INFO - tiny_asyncio.py:83 - Eventloop: move 1 select reader events to ready
+2024-07-01 14:46:18,769 - INFO - tiny_asyncio.py:178 - Socket <socket.socket fd=5, family=2, type=1, proto=0, laddr=('192.168.1.238', 50661), raddr=('3.233.52.245', 80)> received 425 bytes. Continue to receive more data...
+2024-07-01 14:46:18,770 - INFO - tiny_asyncio.py:83 - Eventloop: move 1 select reader events to ready
+2024-07-01 14:46:18,770 - INFO - tiny_asyncio.py:180 - Socket <socket.socket fd=5, family=2, type=1, proto=0, laddr=('192.168.1.238', 50661), raddr=('3.233.52.245', 80)> received 425 bytes. Unregister the socket from the selector
+2024-07-01 14:46:18,770 - INFO - tiny_asyncio.py:278 - Future <tiny_asyncio.Future object at 0x10df9c0d0> is done. Wake up coro main
+2024-07-01 14:46:18,770 - INFO - asyncio_example.py:41 - received HTTP/1.1 200 OK
+Date: Mon, 01 Jul 2024 21:46:18 GMT
+Content-Type: application/json
+Content-Length: 200
+Connection: close
+Server: gunicorn/19.9.0
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true
+
+{
+  "args": {}, 
+  "headers": {
+    "Host": "httpbin.org", 
+    "X-Amzn-Trace-Id": "Root=1-668323aa-39372b104bee468d3eade8b1"
+  }, 
+  "origin": "162.226.174.176", 
+  "url": "http://httpbin.org/get"
+}
+
+2024-07-01 14:46:18,771 - INFO - asyncio_example.py:70 - fetch data takes 0.63 seconds
+2024-07-01 14:46:18,772 - INFO - asyncio_example.py:57 - processing data...
+2024-07-01 14:46:18,772 - INFO - asyncio_example.py:73 - process data takes 0.00 seconds
+2024-07-01 14:46:18,772 - INFO - asyncio_example.py:74 - result: {'length': 425, 'first_50_chars': 'HTTP/1.1 200 OK\r\nDate: Mon, 01 Jul 2024 21:46:18 G'}
+2024-07-01 14:46:18,773 - INFO - tiny_asyncio.py:264 - Coro main is done
+2024-07-01 14:46:18,773 - INFO - tiny_asyncio.py:35 - Task is done, stop the loop

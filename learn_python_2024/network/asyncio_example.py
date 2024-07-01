@@ -16,7 +16,7 @@ from tqdm import tqdm
 - [x] support sleep
 - [x] schedule a task that runs in x seconds later
 - schedule the task running on background periodically
-- async fetch data through socket
+- [x] async fetch data through socket
 - concurrently run multiple tasks
 """
 
@@ -33,9 +33,13 @@ async def fetch_data_dummy(host, port):
 async def fetch_data_http(host, port):
     if USE_TINY_ASYNCIO:
         sock = await asyncio.create_connection(host, port)
-        request = "niuleBile"
+        # request = "niuleBile\r\n\r\n" # use \r\n\r\n as delimiter to end the request
+        request = "GET /get HTTP/1.1\r\nHost: httpbin.org\r\nConnection: close\r\n\r\n"
         n = await asyncio.sock_sendall(sock, request.encode("utf-8"))
-        print(f"send {n} bytes")
+        logger.info(f"sent {n} bytes")
+        response = await asyncio.sock_recv(sock)
+        logger.info(f"received {response}")
+        return response
     else:
         reader, writer = await asyncio.open_connection(host, port)
         request = f"GET / HTTP/1.1\r\nHost: {host}\r\n\r\n"
@@ -57,10 +61,10 @@ async def process_data(data: str):
 
 async def main():
     cur = time.time()
-    # host = "httpbin.org"
-    # port = 80
-    host = "localhost"
-    port = 12345
+    host = "httpbin.org"
+    port = 80
+    # host = "localhost"
+    # port = 12345
     data = await fetch_data_http(host, port)
     after_fetch = time.time()
     logger.info(f"fetch data takes {after_fetch - cur:.2f} seconds")

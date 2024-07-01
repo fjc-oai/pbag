@@ -14,6 +14,7 @@ TODO:
             - iterative read over the buffer  
         - write()
             - iterative write over the buffer, each time the return value is the number of bytes written  
+    - command to scan port
 """
 
 HOST = "localhost"
@@ -25,7 +26,6 @@ def server():
     server_sock.bind((HOST, PORT))
     server_sock.listen()
     server_sock.setblocking(False)
-
 
     # TODO: support multiple clients
     read_buffer = ""
@@ -39,36 +39,31 @@ def server():
         if write_buffer:
             print("Waiting for more data...")
         else:
-            print("Data sent successfully. Now reading message...")
-            selector.modify(conn, selectors.EVENT_READ, read_cb)
+            conn.shutdown(socket.SHUT_WR)
+            print("Data sent successfully. Now unregistering the write event.")
+            selector.unregister(conn)
 
     def read_cb(conn):
         nonlocal read_buffer
         nonlocal write_buffer
         data = conn.recv(8)
-        if data:
-            if "\n" in data.decode():
-                read_buffer += data.decode()
-                print(f"Full message received: {read_buffer}")
-                write_buffer = read_buffer.upper()
-                read_buffer = ""
-                selector.modify(conn, selectors.EVENT_WRITE, write_cb)
-            else:
-                partial_message = data.decode()
-                print(f"Partial message received: {partial_message}")
-                print("Waiting for more data...")
-                read_buffer += partial_message
-        else:
-            print(f"Connection closed by {conn.getpeername()}")
-            selector.unregister(conn)
-            conn.close()
+        if data and "\r\n" not in data.decode():
+            partial_message = data.decode()
+            print(f"Partial message received: {partial_message}")
+            print("Waiting for more data...")
+            read_buffer += partial_message
+        else: # data is empty or "\r\n" is in data
+            print(f"Full message received: {read_buffer}")
+            write_buffer = read_buffer.upper()
+            read_buffer = ""
+            print(f"Now sending response: {write_buffer}")
+            selector.modify(conn, selectors.EVENT_WRITE, write_cb)
 
     def accept_cb(server_sock):
         conn, addr = server_sock.accept()
         print(f"Accepted connection from {addr}")
         conn.setblocking(False)
         selector.register(conn, selectors.EVENT_READ, read_cb)
-
 
     """
     class selectors.SelectorKey
