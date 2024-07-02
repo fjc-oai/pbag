@@ -1,21 +1,53 @@
-import argparse
-import selectors
-import socket
-
 """
-TODO:
+Non-blocking server-client communication using selector module. Handle iteratively recv and send data.
+Written with the help from ChatGPT.
+
+To run the code:
+
+    > python select_example.py server
+    Server is listening on 127.0.0.1:12345
+    server_socket is non-blocking
+    Connected by ('127.0.0.1', 53778). Conn is non-blocking
+    Received from ('127.0.0.1', 53778): python is the best language because
+
+    Connection closed by ('127.0.0.1', 53778)
+
+    
+    > python selector_example.py client
+    Connected to localhost:12345
+    Sent: python is the best language because
+
+    Received: Server ECHO: python is the best language because
+
+
+Major APIs:
     - selector
         - register() args
         - select() return value
-        - select() timeout
-    - socket nonblocking
-        - abstraction: only read/write is provided. no ordering, or which read to which write
-        - read()
+        - select() arg timeout
+    - nonblocking socket
+        - abstraction: only read/write is provided, no ordering, nor which event correspond to which read or write
+        - read(): 
             - iterative read over the buffer  
+            - handle when data is smaller then the size
+            - handle when data is larger then the size
         - write()
             - iterative write over the buffer, each time the return value is the number of bytes written  
-    - command to scan port
+
+    class selectors.SelectorKey
+        A SelectorKey is a namedtuple used to associate a file object to its underlying file descriptor, selected event mask and attached data. It is returned by several BaseSelector methods.
+
+        fileobj: File object registered.
+        fd: Underlying file descriptor.
+        events: Events that must be waited for on this file object.
+        data: Optional opaque data associated to this file object: for example, this could be used to store a per-client session ID.
+
+    abstractmethod register(fileobj, events, data=None)
 """
+
+import argparse
+import selectors
+import socket
 
 HOST = "localhost"
 PORT = 12345
@@ -52,7 +84,7 @@ def server():
             print(f"Partial message received: {partial_message}")
             print("Waiting for more data...")
             read_buffer += partial_message
-        else: # data is empty or "\r\n" is in data
+        else:  # data is empty or "\r\n" is in data
             print(f"Full message received: {read_buffer}")
             write_buffer = read_buffer.upper()
             read_buffer = ""
@@ -65,18 +97,6 @@ def server():
         conn.setblocking(False)
         selector.register(conn, selectors.EVENT_READ, read_cb)
 
-    """
-    class selectors.SelectorKey
-        A SelectorKey is a namedtuple used to associate a file object to its underlying file descriptor, selected event mask and attached data. It is returned by several BaseSelector methods.
-
-        fileobj: File object registered.
-        fd: Underlying file descriptor.
-        events: Events that must be waited for on this file object.
-        data: Optional opaque data associated to this file object: for example, this could be used to store a per-client session ID.
-
-
-    abstractmethod register(fileobj, events, data=None)
-    """
     selector = selectors.DefaultSelector()
     selector.register(server_sock, selectors.EVENT_READ, accept_cb)
     print(f"Server is listening on {HOST}:{PORT}")

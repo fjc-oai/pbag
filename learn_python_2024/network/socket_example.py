@@ -1,3 +1,7 @@
+"""
+Blocking socket example for server-client communication.
+"""
+
 import argparse
 import socket
 
@@ -41,14 +45,12 @@ def client():
         print(f"Received: {data.decode()}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--server", action="store_true")
-    parser.add_argument("--client", action="store_true")
-    args = parser.parse_args()
-    if args.server:
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("role", choices=["server", "client"])
+    args = argparser.parse_args()
+    if args.role == "server":
         server()
-    elif args.client:
+    elif args.role == "client":
         client()
     else:
-        parser.print_help()
-
+        argparser.print_help()

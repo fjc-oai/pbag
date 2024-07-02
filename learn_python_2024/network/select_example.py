@@ -1,7 +1,19 @@
-# TODO
-# what is recv(1024)
-# what is sendall
-# how to set a socket as blocking or non-blocking
+"""
+Non-blocking server-client communication using select module.
+Written with the help from ChatGPT.
+
+To run the code:
+
+    > python select_example.py server
+    Server is listening on 127.0.0.1:12345
+    server_socket is non-blocking
+    Connected by ('127.0.0.1', 53662). Conn is non-blocking
+    Received from ('127.0.0.1', 53662): Client 9: Hi there!
+    Connection closed by ('127.0.0.1', 53662)
+
+    > python select_example.py client
+    Received: Server ECHO: Client 9: Hi there!
+"""
 import argparse
 import random
 import select
@@ -71,8 +83,6 @@ def server():
                     print(f"Received from {clients[sock]}: {data.decode()}")
                     reply = f"Server ECHO: {data.decode()}"
                     """
-
-                    
                     The send() function sends data to the socket. It returns the
                     number of bytes sent. It may not send the entire data in one
                     call. The caller should call send() multiple times to send
@@ -102,17 +112,16 @@ def client(id):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--server", action="store_true")
-    parser.add_argument("--client", action="store_true")
-    args = parser.parse_args()
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("role", choices=["server", "client"])
+    arg = argparser.parse_args()
 
-    if args.server:
+    if arg.role == "server":
         server()
-    elif args.client:
+    elif arg.role == "client":
         client(random.randint(1, 10))
     else:
-        parser.print_help()
+        argparser.print_help()
 
 
 if __name__ == "__main__":
