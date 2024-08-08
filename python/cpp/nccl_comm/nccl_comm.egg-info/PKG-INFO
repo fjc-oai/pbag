@@ -1,0 +1,6 @@
+Metadata-Version: 2.1
+Name: nccl_comm
+Version: 0.1.0
+Summary: A package with C++ bindings
+Author: fmars
+Author-email: fmarsf@gmail.com
