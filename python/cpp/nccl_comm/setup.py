@@ -15,11 +15,10 @@ from setuptools.command.build_ext import build_ext
 
 ext_modules = [
     Pybind11Extension(
-        # Fully qualified name of the module.
-        # This need to match with `PYBIND11_MODULE(ops, m)` in src/ops.cpp
         "nccl_comm.ops",
         sources=["src/ops.cpp"],
         language="c++",
+        extra_compile_args=["-std=c++11"],
     ),
 ]
 

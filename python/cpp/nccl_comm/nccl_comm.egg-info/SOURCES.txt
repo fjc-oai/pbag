@@ -1,8 +1,9 @@
-ops.cpp
 setup.py
 nccl_comm.egg-info/PKG-INFO
 nccl_comm.egg-info/SOURCES.txt
 nccl_comm.egg-info/dependency_links.txt
 nccl_comm.egg-info/not-zip-safe
 nccl_comm.egg-info/top_level.txt
+src/__init__.py
+src/ops.cpp
 tests/test.py
