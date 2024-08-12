@@ -2,13 +2,21 @@
 Torch profiler results sometimes can be tedious to read
 - Irrelevant threads appearing between the main thread and cuda stream events.
 - Excessively deep stack frames made cuda stream far from python functions.
+- Generated json files contain invalid characters that prevent chrome://tracing/ from loading.
+
 
 Usage:
-    Inspect original trace file to find the tids to keep, max_depth to keep.
-    >>> python parse_torch_profiler.py /path/to/torch_profiler.json --pids=4019082,4019083 --max-depth=40
+    1. Keep only the main thread, and trim other threads automatically.
+    >>> python parse_torch_profiler.py /path/to/torch_profiler.json -t=auto
 
-    Or, use `auto` to automatically find the main thread and keep it.
-    >>> python parse_torch_profiler.py /path/to/torch_profiler.json --tids=auto --max-depth=40
+    2. Specify the tids to keep.
+    >>> python parse_torch_profiler.py /path/to/torch_profiler.json -t=4019082,4019083
+
+    3. Trim the frame depth to keep.
+    >>> python parse_torch_profiler.py /path/to/torch_profiler.json -t=auto -m=40
+
+    4. Automatically fix the invalid characters in the json file.
+    >>> python parse_torch_profiler.py /path/to/torch_profiler.json -f
 
 Visualization tools:
     chrome://tracing/
@@ -18,6 +26,7 @@ Visualization tools:
 import argparse
 import json
 import os
+import re
 from collections import defaultdict
 
 import tqdm
@@ -94,16 +103,40 @@ def _process_a_file(file: str, tids: str, max_depth: int):
         json.dump(data, f, indent=None)
 
 
+def _fix_invalid_chars(file_path: str):
+    with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
+        content = file.read()
+
+    # Remove all non-ASCII characters
+    sanitized_content = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F]", "", content)
+    sanitized_content = re.sub(r"[^\x00-\x7F]", "", sanitized_content)
+
+    try:
+        json_data = json.loads(sanitized_content)
+        print("JSON is valid after sanitization.")
+    except json.JSONDecodeError as e:
+        print(f"JSON Decode Error: {e}")
+        return
+
+    sanitized_path = file_path.replace(".json", "_sanitized.json")
+    with open(sanitized_path, "w", encoding="ascii") as sanitized_file:
+        json.dump(json_data, sanitized_file, ensure_ascii=False, indent=4)
+    print(f"Sanitized JSON file saved successfully as {sanitized_path}")
+    return sanitized_path
+
+
 def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument("path", type=str)
-    argparser.add_argument("--tids", type=str, default="auto")
-    argparser.add_argument("--max-depth", type=int, default=0)
+    argparser.add_argument("-t", "--tids", type=str, default="auto")
+    argparser.add_argument("-m", "--max-depth", type=int, default=0)
+    argparser.add_argument("-f", "--fix-invalid", action="store_true", default=False)
     args = argparser.parse_args()
 
     path = args.path
     tids = args.tids
     max_depth = args.max_depth
+    fix_invalid = args.fix_invalid
 
     if not os.path.exists(path):
         raise FileNotFoundError(f"{path} not found")
@@ -121,6 +154,8 @@ def main():
                 files.append(full_path)
 
     for file in files:
+        if fix_invalid:
+            file = _fix_invalid_chars(file)
         _process_a_file(file, tids, max_depth)
 
 
