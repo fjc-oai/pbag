@@ -1,4 +1,6 @@
-# Python thread context switch overhead
+# Thread
+
+##  Context switch 
 
 1. What is a python thread? Is it a pure application level object?
     - No. It uses OS thread under the hood
@@ -24,7 +26,7 @@
     - It has no visibility into system-level scheduling, and only samples python-level threads, but not OS level.
 
 
-# Python thread creation overhead
+## Thread creation overhead
 
 - Benchmark: `python thread_creation_overhead.py`
 
@@ -36,7 +38,7 @@
 
 
 
-# Python thread in Asyncio under the hood
+## Thread in Asyncio 
 
 - Demo: `python concurrent_future_in_asyncio.py`
 
@@ -45,3 +47,13 @@
 - `run_in_executor()` runs the enclosed task in the executor on  one hand, it wraps the returned `concurrent.Future` with `asyncio.Future` which monitored by eventloop on the other hand. 
 
 - Once the underlyting `concurrent.Future` is completed, the corresponding `asyncio.Future` will be marked done as well, thus be ready to be picked up by eventloop to schedule remaining code in its upstream task.
+
+# Context Var
+
+1. Basics
+   - Manage context-local state, used mainly in async programming (e.g. asyncio) 
+   - Each context (e.g. coro/async task) has its own value for a variable
+   - Similar to request context commonly used in C++ backend services
+2. Context var vs thread-local
+   - Context var: mainly used in asyncio. All the tasks run on the same threads
+   - Thread-local: mainly used in multi-threading. Each task runs on its own thread
