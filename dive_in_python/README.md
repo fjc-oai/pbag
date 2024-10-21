@@ -22,3 +22,14 @@
 5. Why profiler doesn't help in this case?
     - Profiler, e.g. py-spy doesn't show context switch overhead
     - It has no visibility into system-level scheduling, and only samples python-level threads, but not OS level.
+
+
+# Python thread creation overhead
+
+- Always create a new thread on-the-fly vs using a global thread pool executor
+
+- Intuitively, thread creation itself is expensive. So it'll be slower (plus thread context switch overhead).
+
+- From benchmark, the difference is not that significant though, ~10%.
+
+- `python thread_creation_overhead.py`
