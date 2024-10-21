@@ -26,10 +26,22 @@
 
 # Python thread creation overhead
 
+- Benchmark: `python thread_creation_overhead.py`
+
 - Always create a new thread on-the-fly vs using a global thread pool executor
 
 - Intuitively, thread creation itself is expensive. So it'll be slower (plus thread context switch overhead).
 
 - From benchmark, the difference is not that significant though, ~10%.
 
-- `python thread_creation_overhead.py`
+
+
+# Python thread in Asyncio under the hood
+
+- Demo: `python concurrent_future_in_asyncio.py`
+
+- Works in a almost the same way as io/select implementation
+
+- `run_in_executor()` runs the enclosed task in the executor on  one hand, it wraps the returned `concurrent.Future` with `asyncio.Future` which monitored by eventloop on the other hand. 
+
+- Once the underlyting `concurrent.Future` is completed, the corresponding `asyncio.Future` will be marked done as well, thus be ready to be picked up by eventloop to schedule remaining code in its upstream task.
