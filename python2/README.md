@@ -57,3 +57,10 @@
 2. Context var vs thread-local
    - Context var: mainly used in asyncio. All the tasks run on the same threads
    - Thread-local: mainly used in multi-threading. Each task runs on its own thread
+
+
+# Itertools
+
+1. `it1 = itertools.count(start=1)`
+
+2. `it2 = more_itertools.batched(it1, 5)`
