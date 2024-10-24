@@ -48,6 +48,11 @@
 
 - Once the underlyting `concurrent.Future` is completed, the corresponding `asyncio.Future` will be marked done as well, thus be ready to be picked up by eventloop to schedule remaining code in its upstream task.
 
+- If underlying function runs asynchronously and returns a concurrent.futures.Future, extra attention is required!
+    1. asyncio.wrap_future() to wrap the returned concurrent.futures.Future and await it
+    2. try-except the block, and propagate the execution properly
+    3. Demo: `python wrap_future.py`
+
 # Context Var
 
 1. Basics
