@@ -3,6 +3,8 @@
     - https://dev-discuss.pytorch.org/t/fsdp-cudacachingallocator-an-outsider-newb-perspective/1486
 - PyTorch cuda cache allocator internal details
     - https://zdevito.github.io/2022/08/04/cuda-caching-allocator.html 
+- PyTorch CUDA mem usage
+    - https://pytorch.org/docs/stable/torch_cuda_memory.html
 
 # Cuda 
 (so-heard knowledges)
