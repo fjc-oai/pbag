@@ -1,3 +1,21 @@
+- [Thread](#thread)
+  - [Context switch](#context-switch)
+  - [Thread creation overhead](#thread-creation-overhead)
+- [Asyncio](#asyncio)
+  - [Cooperative multitask under the hood](#cooperative-multitask-under-the-hood)
+  - [Debug hanging issues](#debug-hanging-issues)
+  - [Exception handling](#exception-handling)
+  - [Thread in Asyncio](#thread-in-asyncio)
+- [Context Var](#context-var)
+- [Itertools](#itertools)
+- [Memory Management](#memory-management)
+  - [Questions to answer](#questions-to-answer)
+  - [Major concepts](#major-concepts)
+  - [Execution flow](#execution-flow)
+  - [mmap](#mmap)
+  - [Pytorch tensor](#pytorch-tensor)
+  - [Profiling tools](#profiling-tools)
+
 # Thread
 
 ##  Context switch 
@@ -14,7 +32,8 @@
 
 3. Why excessive theads can slow down the program?
     - More threads compete for GIL
-    - More threads to schedule on OS
+    - More threads to schedule on Otertools)
+
 
 4. How to benchmark context switch overhead?
     -  `python context_switch_overhead.py`
@@ -95,3 +114,59 @@
 1. `it1 = itertools.count(start=1)`
 
 2. `it2 = more_itertools.batched(it1, 5)`
+
+
+# Memory Management
+
+## Questions to answer
+1. How does Python allocate memory? 
+2. What needs to be intercepted to profile memory allocation?
+3. How are `pymalloc`, `malloc`, `sbrk`, `mmap` related?
+
+## Major concepts
+1. The allocator is responsible for, 1) reserving memory from OS, 2) allocating slices of memory to objects
+   1. Reservation: the allocator uses `mmap` or `sbrk` to request memory from OS
+   2. Allocation: allocator maintains a data structure (e.g. block tree) to efficiently allocate memory chunk, optimizing for low latency and reduced fragmentation.
+2. Virtual vs physical memory
+   1. Allocator deals with virtual memory, both for reservation and allocation. It has no visibility into phisical memory. 
+   2. A page fault is triggered when accessing an virtual memoery, handled by OS, to map a corresponding phisical memory page.
+
+## Execution flow
+1. When a process starts, OS assigns a unique virtual memory space divided into disjoint sections, e.g. code segment, stack segment, heap segment, etc
+2. When application code creates a new object, it triggers a memory allocation call.
+3. `PyMalloc` handles the allocation request first:
+   1. If it's a python special object (e.g. integer), PyMalloc optimizes the allocation.
+   2. Otherwise it forwards the request to `glibc`'s `malloc`.
+   3. Note that, memory allocation from native code (e.g. C) bypasses `PyMalloc` and directly uses `malloc`
+4. malloc() allocates memory from heap, if there is sufficient available memory, using some algorithm, optimizing for low latency, low fragementation, etc.
+   1. If sufficient heap memory is unavailable, depending on the request size, 
+   2. small requests: `malloc` invoeks kernels's `sbrk` to expand the heap's contiguous memory
+   3. large requests (e.g. >128KB?): `malloc` uses `mmap` to reserve a separate large memory region\
+
+## mmap
+1. mmap serves for several difference purposes
+2. In malloc case, it creates anonemous map, which basically reserves a large virtual memory region from OS. Don't realy understand why it's still called map in this case, likely some legacy reason?
+   1. When a previously malloc calling mmap allocated memory is freed, the allocator calls munmap to free it
+   2. This behavior might be further optimized by letting allocator to hold the region for reuse instead of instead of inmediate return, to save kernel invocations. jemalloc does this?.
+3. It can also map a file to virtual memory space, so to save an extra memory copy to access the file.
+
+## Pytorch tensor
+1. GPU tensor allocation increases both host virtual memory (virt) and resident memory (res).
+2. The GPU context reserves a virtual memory region.
+3. Bookkeeping data structures contribute to resident memory usage.
+
+
+## Profiling tools
+1. top cmd output: 
+   1. `virt`: virtual memory - allocated logical memory 
+   2. `res`: residual memory - physical memory
+   3. `shr`: shared memory, e.g. glibc, /dev/shm, etc
+2. Tracemalloc:
+   1. Likely hooks into PyMalloc  
+   2. Tracks only allocated but not yet freed memory, useful for debugging memory leaks.
+   3. For PyTorch tensors, it tracks Python-allocated metadata but not the native-allocated data (e.g., tensor data).
+3. Memray:
+    1. Likely hooks into malloc, enabling tracing of both Python and native memory allocations.   
+    2. https://github.com/bloomberg/memray/blob/ef3d3ea2e696de5d01bb94879abf27159b989375/src/memray/_memray/hooks.cpp#L116 
+
+
