@@ -1,4 +1,14 @@
-# Links
+# Table of Content
+- [Table of Content](#table-of-content)
+- [Memory Management](#memory-management)
+  - [Links](#links)
+  - [Cuda](#cuda)
+  - [PyTorch CudaCacheAllocator (CCA)](#pytorch-cudacacheallocator-cca)
+  - [Monitoring](#monitoring)
+
+# Memory Management
+
+## Links
 - Gentle intro to memory management. A great one!
     - https://dev-discuss.pytorch.org/t/fsdp-cudacachingallocator-an-outsider-newb-perspective/1486
 - PyTorch cuda cache allocator internal details
@@ -6,7 +16,7 @@
 - PyTorch CUDA mem usage
     - https://pytorch.org/docs/stable/torch_cuda_memory.html
 
-# Cuda 
+## Cuda 
 (so-heard knowledges)
 1. `cudaMalloc()` and `cudaFree()` are host-side functions. Synchronous functions. Don't issue kernels that run on Cuda streams.
     - It imples Cuda memory is managed by runtime library running on Cpu side. Device executes computation upon whatever addresses it receives
@@ -14,7 +24,7 @@
 2. `cudaMalloc()` is not that slow, just directly claims a unused memory.
 3. `cudaFree()` triggers a device synchronization, waiting for all cuda ops completion across streams.
 
-# PyTorch CudaCacheAllocator (CCA)
+## PyTorch CudaCacheAllocator (CCA)
 1. Single stream case is simple. All of the tensor allocation and deallocation happen on Cpu without any synchronization needed. Gpu operations runs on Cuda queue following the exactly same order. 
 
 2. CCA creates one-pool-per-stream. When no cross stream tensor access, the case is as simple as single stream.
@@ -87,7 +97,7 @@ for i in range(N):
     print(f"iter {i} {torch.equal(y, expected)=}")
 
 ```
-# Monitoring
+## Monitoring
 1. `torch.cuda.memory_allocated()` and `torch.cuda.memory_allocated()`
 2. `torch.cuda.memory_allocated()` will count a memory as freed as long as tensor is deleted, without considering if it's recorded on another stream.
 3. `torch.cuda.memory._record_memory_history()` to track runtime memory allocation history overtime with stacktrace. 

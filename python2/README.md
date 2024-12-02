@@ -85,7 +85,7 @@
 
 ## Thread in Asyncio 
 
-- Demo: `python concurrent_future_in_asyncio.py`
+- Demo: `python thread_in_asyncio.py`
 
 - Works in a almost the same way as io/select implementation
 
@@ -96,7 +96,6 @@
 - If underlying function runs asynchronously and returns a concurrent.futures.Future, extra attention is required!
     1. asyncio.wrap_future() to wrap the returned concurrent.futures.Future and await it
     2. try-except the block, and propagate the execution properly
-    3. Demo: `python wrap_future.py`
 
 # Context Var
 
