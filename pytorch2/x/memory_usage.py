@@ -1,148 +1,180 @@
+import fire
 import torch
 import torch.nn as nn
+import torch.utils.checkpoint as checkpoint
+
+enable_activation_checkpointing = False
+
+
+def get_ac():
+    global enable_activation_checkpointing
+    return enable_activation_checkpointing
+
+
+def set_ac(val):
+    global enable_activation_checkpointing
+    enable_activation_checkpointing = val
 
 
 # Multi-Head Attention Module
-class MultiHeadAttention(nn.Module):
-    def __init__(self, embed_size, num_heads):
-        super(MultiHeadAttention, self).__init__()
-        assert (
-            embed_size % num_heads == 0
-        ), "Embedding size must be divisible by the number of heads"
-        self.num_heads = num_heads
-        self.head_dim = embed_size // num_heads
+class Attention(nn.Module):
+    def __init__(self, d_model, n_heads):
+        super(Attention, self).__init__()
+        assert d_model % n_heads == 0, "Embedding size must be divisible by the number of heads"
+        self.n_heads = n_heads
+        self.head_dim = d_model // n_heads
 
-        self.q_proj = nn.Linear(embed_size, embed_size)
-        self.k_proj = nn.Linear(embed_size, embed_size)
-        self.v_proj = nn.Linear(embed_size, embed_size)
-        self.out_proj = nn.Linear(embed_size, embed_size)
+        self.q_proj = nn.Linear(d_model, d_model)
+        self.k_proj = nn.Linear(d_model, d_model)
+        self.v_proj = nn.Linear(d_model, d_model)
+        self.out_proj = nn.Linear(d_model, d_model)
 
     def forward(self, x):
-        # Memory tracking for attention module
-        print(f"Memory before attention projection: {torch.cuda.memory_allocated() / 1e6} MB")
+        batch_size, seq_len, d_model = x.size()
+        Q = self.q_proj(x)  # 8*4*4096*32*4=16MB
+        K = self.k_proj(x)  # 8*4*4096*32*4=16MB
+        V = self.v_proj(x)  # 8*4*4096*32*4=16MB
 
-        batch_size, seq_len, embed_size = x.size()
-        Q = self.q_proj(x)
-        K = self.k_proj(x)
-        V = self.v_proj(x)
+        Q = Q.view(batch_size, seq_len, self.n_heads, self.head_dim).transpose(1, 2)
+        K = K.view(batch_size, seq_len, self.n_heads, self.head_dim).transpose(1, 2)
+        V = V.view(batch_size, seq_len, self.n_heads, self.head_dim).transpose(1, 2)
 
-        Q = Q.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
-        K = K.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
-        V = V.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
-
-        scores = (Q @ K.transpose(-2, -1)) / (self.head_dim**0.5)
-        attention = torch.softmax(scores, dim=-1)
-        out = (attention @ V).transpose(1, 2).reshape(batch_size, seq_len, embed_size)
-
-        print(f"Memory after attention computation: {torch.cuda.memory_allocated() / 1e6} MB")
-        return self.out_proj(out)
+        # scores = (Q @ K.transpose(-2, -1)) / (self.head_dim**0.5)  # 8*4*4096*4096*4=2G
+        # attention = torch.softmax(scores, dim=-1)  # 8*4*4096*4096*4=2GB
+        # out = (
+        #     (attention @ V).transpose(1, 2).reshape(batch_size, seq_len, d_model)
+        # )  # 8*4096*128*4=16MB
+        # return self.out_proj(out)
+        x = (Q @ K.transpose(-2, -1)) / (self.head_dim**0.5)  # 8*4*4096*4096*4=2G
+        x = torch.softmax(x, dim=-1)  # 8*4*4096*4096*4=2GB
+        x = (x @ V).transpose(1, 2).reshape(batch_size, seq_len, d_model)  # 8*4096*128*4=16MB
+        return self.out_proj(x)
 
 
 # Feedforward MLP Module
 class FeedForward(nn.Module):
-    def __init__(self, embed_size, hidden_dim):
+    def __init__(self, d_model):
         super(FeedForward, self).__init__()
-        self.fc1 = nn.Linear(embed_size, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, embed_size)
+        self.fc1 = nn.Linear(d_model, d_model)
+        self.fc2 = nn.Linear(d_model, d_model)
         self.activation = nn.ReLU()
 
     def forward(self, x):
-        print(f"Memory before MLP: {torch.cuda.memory_allocated() / 1e6} MB")
-        x = self.fc1(x)
+        x = self.fc1(x)  # 8*4096*128*4=16MB
         x = self.activation(x)
         x = self.fc2(x)
-        print(f"Memory after MLP: {torch.cuda.memory_allocated() / 1e6} MB")
         return x
 
 
 # Transformer Encoder Layer
-class TransformerLayer(nn.Module):
-    def __init__(self, embed_size, num_heads, hidden_dim):
-        super(TransformerLayer, self).__init__()
-        self.attention = MultiHeadAttention(embed_size, num_heads)
-        self.feed_forward = FeedForward(embed_size, hidden_dim)
-        self.norm1 = nn.LayerNorm(embed_size)
-        self.norm2 = nn.LayerNorm(embed_size)
+class AttnMlpBlock(nn.Module):
+    def __init__(self, d_model, n_heads):
+        super(AttnMlpBlock, self).__init__()
+        self.attention = Attention(d_model, n_heads)
+        self.feed_forward = FeedForward(d_model)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
 
     def forward(self, x):
-        print(f"Memory before Transformer Layer: {torch.cuda.memory_allocated() / 1e6} MB")
-        # Self-attention with residual connection
-        attention_out = self.attention(x)
-        x = self.norm1(x + attention_out)
+        attention_out = self.attention(x)  # 8*4096*128*4=16MB
+        x = self.norm1(x + attention_out)  # 8*4096*128*4=16MB
 
-        # Feedforward network with residual connection
-        ff_out = self.feed_forward(x)
-        x = self.norm2(x + ff_out)
-        print(f"Memory after Transformer Layer: {torch.cuda.memory_allocated() / 1e6} MB")
+        ff_out = self.feed_forward(x)  # 8*4096*128*4=16MB
+        x = self.norm2(x + ff_out)  # 8*4096*128*4=16MB
         return x
 
 
 # Complete LLM Model
-class ModularLLM(nn.Module):
-    def __init__(self, vocab_size, embed_size, num_heads, num_layers, hidden_dim, max_seq_len):
-        super(ModularLLM, self).__init__()
-        self.embedding = nn.Embedding(vocab_size, embed_size)
-        self.positional_encoding = nn.Parameter(torch.zeros(1, max_seq_len, embed_size))
-        self.layers = nn.ModuleList(
-            [TransformerLayer(embed_size, num_heads, hidden_dim) for _ in range(num_layers)]
-        )
-        self.fc_out = nn.Linear(embed_size, vocab_size)
+class Transformer(nn.Module):
+    def __init__(self, vocab_size, d_model, n_heads, n_layers):
+        super(Transformer, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, d_model)
+        self.layers = nn.ModuleList([AttnMlpBlock(d_model, n_heads) for _ in range(n_layers)])
+        self.unembed = nn.Linear(d_model, vocab_size)
 
     def forward(self, x):
         batch_size, seq_len = x.size()
-        x = self.embedding(x) + self.positional_encoding[:, :seq_len, :]
+        x = self.embedding(x)  # 8*4096*128*4=16MB
         for layer in self.layers:
-            x = layer(x)
-        return self.fc_out(x)
+            enable_activation_checkpointing = get_ac()
+            if enable_activation_checkpointing:
+                x = checkpoint.checkpoint(layer, x)  # 8*4096*128*4=16MB
+            else:
+                x = layer(x)  # 8*4096*128*4=16MB
+        x = checkpoint.checkpoint(self.unembed, x)  # 8*4096*10240*4=1280MB
+        # x = self.unembed(x)  # 8*4096*10240*4=1280MB
+        return x
 
 
-
-# Hyperparameters
-vocab_size = 64
-embed_size = 128
-num_heads = 4
-num_layers = 2
-hidden_dim = 256
-max_seq_len = 50
-
-# Initialize the model and move to GPU
-model = ModularLLM(vocab_size, embed_size, num_heads, num_layers, hidden_dim, max_seq_len).cuda()
-
-# Memory tracking
-torch.cuda.empty_cache()
-print(f"Memory allocated before forward pass: {torch.cuda.memory_allocated() / 1e6} MB")
-
-
-# Example input
+vocab_size = 10240
+d_model = 128
+n_heads = 4
+n_layers = 4
+n_ctx = 4096
 batch_size = 8
-seq_len = 50
-x = torch.randint(0, vocab_size, (batch_size, seq_len)).cuda()
+mb_size = 8
 
-def train():
-    # Forward pass
+
+def fwd_only():
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+    with torch.no_grad():
+        model = Transformer(vocab_size, d_model, n_heads, n_layers).cuda()
+        x = torch.randint(0, vocab_size, (batch_size, n_ctx)).cuda()  # 8*4096*4=128KB
+
+        torch.cuda.memory._record_memory_history()
+        output = model(x)
+
+        torch.cuda.memory._dump_snapshot(f"fwd_only_snapshot.pickle")
+        print(f"Saving forward pass snapshot to fwd_only_snapshot.pickle")
+    peak_memory = torch.cuda.max_memory_allocated()
+    print(f"Peak memory usage during forward pass: {peak_memory / 1024**3:.2f} GB")
+
+
+def fwd_bwd():
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+    model = Transformer(vocab_size, d_model, n_heads, n_layers).cuda()
+    x = torch.randint(0, vocab_size, (batch_size, n_ctx)).cuda()  # 8*4096*4=128KB
+
+    torch.cuda.memory._record_memory_history()
     output = model(x)
-    print(f"Memory allocated after forward pass: {torch.cuda.memory_allocated() / 1e6} MB")
-
-    # Loss computation and backward pass
-    target = torch.randint(0, vocab_size, (batch_size, seq_len)).cuda()
-    loss_fn = nn.CrossEntropyLoss()
-    loss = loss_fn(output.view(-1, vocab_size), target.view(-1))
-
-    print(f"Memory allocated before backward pass: {torch.cuda.memory_allocated() / 1e6} MB")
+    loss = output.sum()
     loss.backward()
-    print(f"Memory allocated after backward pass: {torch.cuda.memory_allocated() / 1e6} MB")
+    torch.cuda.memory._dump_snapshot(f"fwd_bwd_snapshot.pickle")
+    print(f"Saving forward-backward pass snapshot to fwd_bwd_snapshot.pickle")
+    peak_memory = torch.cuda.max_memory_allocated()
+    print(f"Peak memory usage during forward-backward pass: {peak_memory / 1024**3:.2f} GB")
 
-    # Clear gradients
-    model.zero_grad()
-    print(f"Memory allocated after clearing gradients: {torch.cuda.memory_allocated() / 1e6} MB")
 
-print("Training once to allocate the grads")
-train()
+def fwd_bwd_activation_checkpoint():
+    set_ac(True)
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+    model = Transformer(vocab_size, d_model, n_heads, n_layers).cuda()
+    x = torch.randint(0, vocab_size, (batch_size, n_ctx)).cuda()  # 8*4096*4=128KB
 
-print("Doing the real training")
-torch.cuda.memory._record_memory_history(max_entries=100000)
-train()
+    torch.cuda.memory._record_memory_history()
+    output = model(x)
+    loss = output.sum()
+    del output
+    loss.backward()
+    torch.cuda.memory._dump_snapshot(f"fwd_bwd_ac_snapshot.pickle")
+    print(f"Saving forward-backward pass snapshot to fwd_bwd_ac_snapshot.pickle")
+    peak_memory = torch.cuda.max_memory_allocated()
+    print(
+        f"Peak memory usage during forward-backward pass with activation checkpointing: {peak_memory / 1024**3:.2f} GB"
+    )
 
-path = "/tmp/mem_all.pickle"
-torch.cuda.memory._dump_snapshot(path)
-print(f"Memory snapshot saved to {path}")
+
+def profile(mode):
+    fns = {
+        "fwd_only": fwd_only,
+        "fwd_bwd": fwd_bwd,
+        "fwd_bwd_ac": fwd_bwd_activation_checkpoint,
+    }
+    fns[mode]()
+
+
+if __name__ == "__main__":
+    fire.Fire(profile)

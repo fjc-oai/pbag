@@ -5,6 +5,7 @@
   - [Cuda](#cuda)
   - [PyTorch CudaCacheAllocator (CCA)](#pytorch-cudacacheallocator-cca)
   - [Monitoring](#monitoring)
+- [Memory Usage](#memory-usage)
 
 # Memory Management
 
@@ -102,3 +103,31 @@ for i in range(N):
 2. `torch.cuda.memory_allocated()` will count a memory as freed as long as tensor is deleted, without considering if it's recorded on another stream.
 3. `torch.cuda.memory._record_memory_history()` to track runtime memory allocation history overtime with stacktrace. 
     - https://pytorch.org/docs/stable/torch_cuda_memory.html
+
+
+# Memory Usage
+
+1. forward only
+   1. tensors by life span
+      1. x = fn(x)
+      2. kernel intermediate tensor
+      3. last for a function, and potentially returned to next func
+   2. mem graph pattern
+      1. up down up down 
+      2. re-assign after compute -> slip down
+2. fwd_bwd
+   1. which tensors are long term saved
+      1. used in op where the other operand requires grad
+   2. mem graph pattern
+      1. up up up up (save tensors in ctx)
+      2. up down up down up down (intermediate grad tensor for activations)
+      3. down down down (free saved activations)   
+   3. softmax doesn't requires to store activation in ctx
+   4. so in attn layer, only one 2GB activation is needed to be stored
+   5. the finaly projection layer output activiation will be stored as well
+3. fwd_bwd_ac
+   1. in fwd pass, 2GB activation is only used in computation, but not stored in ctx
+   2. only 16MB end-of-layer activations is saved to ctx
+   3. delete output at the outtest function so it doesn't last for entire backward
+   4. softmax requires to save its own output for backward
+   
