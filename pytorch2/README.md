@@ -5,17 +5,20 @@
   - [Cuda](#cuda)
   - [PyTorch CudaCacheAllocator (CCA)](#pytorch-cudacacheallocator-cca)
   - [Monitoring](#monitoring)
-- [Memory Usage](#memory-usage)
 - [Activation Checkpointing](#activation-checkpointing)
-  - [How does it work?](#how-does-it-work)
+  - [Under the hood](#under-the-hood)
   - [Autograd engine](#autograd-engine)
-  - [Impact on memory](#impact-on-memory)
+  - [Peak memory](#peak-memory)
   - [Toy implementation](#toy-implementation)
-- [Computation graph](#computation-graph)
+- [Autograd \& Computation graph](#autograd--computation-graph)
   - [Concepts](#concepts)
   - [Data structure](#data-structure)
   - [tensor.detach()](#tensordetach)
   - [Visualization](#visualization)
+- [CUDA Memory Usage](#cuda-memory-usage)
+  - [Forward only](#forward-only)
+  - [Foward backward](#foward-backward)
+  - [Forward backward with activation checkpointing](#forward-backward-with-activation-checkpointing)
 
 # CUDA Memory Management
 
@@ -26,6 +29,8 @@
     - https://zdevito.github.io/2022/08/04/cuda-caching-allocator.html 
 - PyTorch CUDA mem usage
     - https://pytorch.org/docs/stable/torch_cuda_memory.html
+- Visualize mem profile
+    - https://pytorch.org/memory_viz
 
 ## Cuda 
 (so-heard knowledges)
@@ -115,34 +120,8 @@ for i in range(N):
     - https://pytorch.org/docs/stable/torch_cuda_memory.html
 
 
-# Memory Usage
-
-1. forward only
-   1. tensors by life span
-      1. x = fn(x)
-      2. kernel intermediate tensor
-      3. last for a function, and potentially returned to next func
-   2. mem graph pattern
-      1. up down up down 
-      2. re-assign after compute -> slip down
-2. fwd_bwd
-   1. which tensors are long term saved
-      1. used in op where the other operand requires grad
-   2. mem graph pattern
-      1. up up up up (save tensors in ctx)
-      2. up down up down up down (intermediate grad tensor for activations)
-      3. down down down (free saved activations)   
-   3. softmax doesn't requires to store activation in ctx
-   4. so in attn layer, only one 2GB activation is needed to be stored
-   5. the finaly projection layer output activiation will be stored as well
-3. fwd_bwd_ac
-   1. in fwd pass, 2GB activation is only used in computation, but not stored in ctx
-   2. only 16MB end-of-layer activations is saved to ctx
-   3. delete output at the outtest function so it doesn't last for entire backward
-   4. softmax requires to save its own output for backward
-   
 # Activation Checkpointing
-## How does it work?
+## Under the hood
 1. In a normal forward pass, each operation (i.e. torch.autograd.Function) save inputs (e.g. activations from previous ops) into ctx for backward pass
 2. Activation checkpointing creates a new torch.autograd.Function as a wrapper, wraps usually a bunch of operations as a group.
 3. In forward method, `torch.no_grad()` is used, and only the input to the first op is saved to ctx, but none of the intermediate activations
@@ -156,7 +135,7 @@ for i in range(N):
 - In forward pass, operations within the checkpoint group won't be tracked by computation graph
 - In backward pass, build a local computaion graph on-the-fly, compute and assign gradients within the group
 
-## Impact on memory
+## Peak memory
 - Instead saving all the activations, only activations at the boundary of checkpointing will be saved
 - Intermeidate acitivation will be regenerated during backward pass, one checkpointing at a time though
 - Let's say we have a model with N layers, each layer has X bytes of final activation and Y extra bytes for the full activation, the memory usage would be 
@@ -174,7 +153,7 @@ torch peak memory: 688.08 MB
 
 
 
-# Computation graph
+# Autograd & Computation graph
 
 ## Concepts
 1. A computation graph represents how tensors flow through operations during forward pass and backward passes.
@@ -197,3 +176,49 @@ After running forward pass, autograd engine builds the computation graph by
 ## Visualization
 - Run `python tiny_checkpoint.py` with `ENABLE_COMPUTATION_GRAPH_VIZ_DOT=True` to inspect the computation graph.
 - <img src='images/computation_graph.png' width='500'>
+
+
+# CUDA Memory Usage
+
+## Forward only
+1. Tensor types by life span
+   1. Within an op
+      1. Kernel intermeidate tensor: allocated and freed within the scope of kernel
+   2. Within a line
+      1. `x = fn(x)`: freed after reassignment
+   3. Within a function
+      1. Unique variables in a function, and potentially return to next func
+2. Mem graph pattern
+   1. Up down and up down due to frequent tensor reassignment
+   2. In the simplest case, at most 2 tensors are alive, and only 1 tensor alive in most times
+3. Profiling: `python x/memory_usage.py --mode=fwd_only`
+
+    `Peak memory usage during forward pass: 4.11 GB`
+
+<img src='images/fwd_only.png' width='300'>
+
+## Foward backward
+1. which activation will have long-lasting lifetime, i.e. saved in ctx for bwd?
+    1. the ones used in the bwd, e.g. the activation in bmm if the other operand requires grad
+    2. NB, softmax doesn't requires to store the input activation but output activation
+2. Mem graph pattern
+   1. fwd: up up up (saving activations in ctx)
+   2. bwd: up down up down (creating and freeing intermediate grad tensor for activations)
+   3. bwd: down down down (free saved activations in ctx)
+3. Profiling: `python x/memory_usage.py --mode=fwd_bwd`
+
+    `Peak memory usage during forward-backward pass: 15.83 GB`
+
+<img src='images/fwd_bwd.png' width='300'>
+
+## Forward backward with activation checkpointing
+1. Only input for each checkpointing block is saved, but not the full intermediate activations
+2. Mem graph pattern
+   1. fwd: up (up down) up (up down) (checkpointing block doesn't require grad)
+   2. bwd: down (up down) down (up down) (recompute intermediate activations within each checkpointing block before backward)
+3. Profiling: `python x/memory_usage.py --mode=fwd_bwd`
+
+    `Peak memory usage during forward-backward pass with activation checkpointing: 8.24 GB`
+4. OPEN QUESTION: why those pointy spikes???
+
+<img src='images/fwd_bwd_ac.png' width='300'>
