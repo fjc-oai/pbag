@@ -1,8 +1,26 @@
+"""
+This script demonstrates how to implement a toy version of PyTorch's activation
+checkpointing.
+ 
+- test_correctness() verifies that the toy implementation produces the same
+  output and gradient as the no_op and torch implementations.
+
+- test_peak_memory() compares the peak memory usage of the toy implementation,
+  and confirms it indeeds use less memory and equals to torch's implementation
+  when use_reentrant=True.
+
+It also includes options to visualize the computation graph, either by printing
+through dot.render() or by printing through print_graph().
+
+"""
 from collections import defaultdict
 
 import torch
 import torch.utils.checkpoint as torch_checkpoint
+from torchviz import make_dot
 
+ENABLE_COMPUTATION_GRAPH_VIZ_DOT = False
+ENABLE_COMPUTATION_GRAPH_VIZ_PRINT = False
 
 class CheckpointFunction(torch.autograd.Function):
     @staticmethod
@@ -18,13 +36,13 @@ class CheckpointFunction(torch.autograd.Function):
         inputs = ctx.saved_tensors
         run_function = ctx.run_function
         with torch.enable_grad():
-            ##############################
-            # The following line is important because it ensures that the
-            # backward() method only computes the gradient of the input with
-            # respect to the output within this function. Without this line, the
-            # backward() method would run backward on the original input
-            # multiple times, which is incorrect.
-            ##############################
+            ####################################################################
+            # 
+            # IMPORTANT: Detach the input. So to ensure this backward() function
+            # only computes the gradient till to the input of this method, but
+            # not further along the chain.
+            # 
+            ####################################################################
             inputs = tuple(input_.detach().requires_grad_(True) for input_ in inputs)
             outputs = run_function(*inputs)
 
@@ -54,6 +72,12 @@ def get_checkpoint_fn(mode):
         # implementation
         return partial(torch_checkpoint.checkpoint, use_reentrant=True)
 
+def print_graph(fn, indent=0):
+    if fn is None:
+        return
+    print(' ' * indent + f'-> {type(fn).__name__}')
+    for next_fn, _ in fn.next_functions:
+        print_graph(next_fn, indent + 4)
 
 def run_fwd_bwd(mode):
     class Block(torch.nn.Module):
@@ -105,10 +129,17 @@ def run_fwd_bwd(mode):
     bs = 4096 * 2
 
     model = Model(d_model).cuda()
-    x = torch.randn(bs, d_model).cuda()
+    x = torch.randn(bs, d_model).cuda().requires_grad_(True)
     target = torch.randn(bs, d_model).cuda()
     y = model(x)
     loss = torch.nn.MSELoss()(y, target)
+
+    if ENABLE_COMPUTATION_GRAPH_VIZ_DOT:
+        dot = make_dot(loss, params={"x": x, "y": y, "loss": loss})
+        dot.format = "pdf"
+        dot.render(f"{mode}_checkpoint")
+    if ENABLE_COMPUTATION_GRAPH_VIZ_PRINT:
+        print_graph(loss.grad_fn)
     loss.backward()
     return x, y, loss, model
 

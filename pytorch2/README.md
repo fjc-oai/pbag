@@ -1,13 +1,23 @@
 # Table of Content
 - [Table of Content](#table-of-content)
-- [Memory Management](#memory-management)
+- [CUDA Memory Management](#cuda-memory-management)
   - [Links](#links)
   - [Cuda](#cuda)
   - [PyTorch CudaCacheAllocator (CCA)](#pytorch-cudacacheallocator-cca)
   - [Monitoring](#monitoring)
 - [Memory Usage](#memory-usage)
+- [Activation Checkpointing](#activation-checkpointing)
+  - [How does it work?](#how-does-it-work)
+  - [Autograd engine](#autograd-engine)
+  - [Impact on memory](#impact-on-memory)
+  - [Toy implementation](#toy-implementation)
+- [Computation graph](#computation-graph)
+  - [Concepts](#concepts)
+  - [Data structure](#data-structure)
+  - [tensor.detach()](#tensordetach)
+  - [Visualization](#visualization)
 
-# Memory Management
+# CUDA Memory Management
 
 ## Links
 - Gentle intro to memory management. A great one!
@@ -131,3 +141,59 @@ for i in range(N):
    3. delete output at the outtest function so it doesn't last for entire backward
    4. softmax requires to save its own output for backward
    
+# Activation Checkpointing
+## How does it work?
+1. In a normal forward pass, each operation (i.e. torch.autograd.Function) save inputs (e.g. activations from previous ops) into ctx for backward pass
+2. Activation checkpointing creates a new torch.autograd.Function as a wrapper, wraps usually a bunch of operations as a group.
+3. In forward method, `torch.no_grad()` is used, and only the input to the first op is saved to ctx, but none of the intermediate activations
+4. Externally, only this wrapper op is tracked by the computation graph.
+4. In backward method, re-run the forward on this operation group, which builds the local computation graph with all the needed intermediate activations. 
+5. Then backward method runs backward on this local computation graph, and returns the gradients for the original input.
+6. Outter computation graph will continue backward with returned gradients
+
+
+## Autograd engine
+- In forward pass, operations within the checkpoint group won't be tracked by computation graph
+- In backward pass, build a local computaion graph on-the-fly, compute and assign gradients within the group
+
+## Impact on memory
+- Instead saving all the activations, only activations at the boundary of checkpointing will be saved
+- Intermeidate acitivation will be regenerated during backward pass, one checkpointing at a time though
+- Let's say we have a model with N layers, each layer has X bytes of final activation and Y extra bytes for the full activation, the memory usage would be 
+  - Without activation checkpointing: (X+Y) * N
+  - With activation checkpoiting every layer: X * N + Y
+  - With activation checkpointing every M layers: X * (N/M) + X * (M-1) + Y * M
+
+## Toy implementation
+```
+$ python tiny_checkpoint.py
+no_op peak memory: 940.07 MB
+toy peak memory: 688.08 MB
+torch peak memory: 688.08 MB
+```
+
+
+
+# Computation graph
+
+## Concepts
+1. A computation graph represents how tensors flow through operations during forward pass and backward passes.
+2. PyTorch constructs the graph on-the-fly when running forward pass.
+3. Tensors are the nodes in the graph
+4. Operations are the edges connecting the nodes.
+
+## Data structure
+After running forward pass, autograd engine builds the computation graph by
+- Each tensor (with `requires_grad=True`) has a associated `.grad_fn` attribute, which is responsible to compute and assign grads for its input tensors.
+- Each `.grad_fn` has a associated `.next_functions`, each of which element is another `.grad_fn` along the chain
+- Traversing from `loss.grad_fn` and invoke `.grad_fn` on the chain will compute and assign grads for all the tensors along the chain
+
+## tensor.detach()
+- Creates a new tensor that shares the same storage but detached from the computation graph
+- Sharing the same storage means no new memory allocation.
+- The newly created tensor will not require grads, even if the original does.
+- The detached tensor won't have grad_fn attribute, and isn't part of the computation graph.
+
+## Visualization
+- Run `python tiny_checkpoint.py` with `ENABLE_COMPUTATION_GRAPH_VIZ_DOT=True` to inspect the computation graph.
+- <img src='images/computation_graph.png' width='500'>
