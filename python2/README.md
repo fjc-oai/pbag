@@ -15,6 +15,10 @@
   - [mmap](#mmap)
   - [Pytorch tensor](#pytorch-tensor)
   - [Profiling tools](#profiling-tools)
+- [Python Package](#python-package)
+  - [Module, Package, and Project](#module-package-and-project)
+  - [Absolute and relative import](#absolute-and-relative-import)
+  - [Import statement](#import-statement)
 
 # Thread
 
@@ -169,3 +173,35 @@
     2. https://github.com/bloomberg/memray/blob/ef3d3ea2e696de5d01bb94879abf27159b989375/src/memray/_memray/hooks.cpp#L116 
 
 
+
+# Python Package
+
+## Module, Package, and Project
+
+* Module: each python file is a module
+    * A good [explanation](https://iq-inc.com/importerror-attempted-relative-import/) of modules and packages.
+* Package: a folder including `__init__.py` is a package
+* Project: a folder containing `pyproject.toml` to describe project info, and contains one or more packages
+    * A good[ explanation](https://packaging.python.org/en/latest/tutorials/packaging-projects/) of build, package, index, distribute, install, and use projects
+    * PIP is the indexing and hosting service to distribute python project and packages
+
+
+## Absolute and relative import 
+
+* Absolute import starting from package name to module name, e.g, 
+    * `from mypkg.mymodule import fn`
+* Packages are search from paths, including PYTHONPATH, syspath, current dir, etc
+* Relative import uses current path to search modules, e.g.
+    * `from mymodule import fn`
+        * Note, this is an implicit relative import, which is usually confusing
+    * `from ..another_module import foo`
+    * Note, relative import can only import modules in the same package
+
+## Import statement
+
+* Importing the module itself doesn’t do anything other than importing `__init__.py`. 
+    * If any internal modules need to be imported through package importing, for ease of use reason, they need to be specified in `__init__.py`. 
+* Import statement doesn’t include project name
+    * When `pip install`, it’s the project name defined in `pyproject.toml` file. 
+    * One project can have one or more modules. Their name may or may not be same as the project name
+* Only when importing a particular module, the module gets executed and added to namespace
