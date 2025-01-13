@@ -33,6 +33,7 @@
     - Voluntary (yield) and non-voluntary context switch (preemption)
     - Yield: sleep(), io.wait(), lock.acquire(), etc
     - Preemption: interpreter forces a context switch on a thread after a certain number of byte-code executed, which is controlled by `sys.setswitchinterval()`.
+    - When python code calls native code, interpreter can no longer forces a context switch. Native code will also hold the gil, unless it explicitly gives up.
 
 3. Why excessive theads can slow down the program?
     - More threads compete for GIL
