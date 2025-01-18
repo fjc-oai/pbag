@@ -11,7 +11,7 @@ class Newsfeed:
     def post(self, uid: str, message: str) -> bool:
         timestamp = float(time.time())
         post_id = f"{uid}-{timestamp}"
-        self.posts.append(post_id, (uid, message, timestamp))
+        self.posts[post_id] = (uid, message, timestamp)
         if uid not in self.user_posts:
             self.user_posts[uid] = [post_id]
         else:

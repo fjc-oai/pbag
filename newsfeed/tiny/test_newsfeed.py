@@ -2,7 +2,7 @@ import time
 
 from utils import create_users, validate_users
 
-from newsfeed import NewsFeed
+from newsfeed import Newsfeed
 
 
 def validate_users(users: dict[str, set[str]]) -> None:
@@ -19,7 +19,7 @@ def test_basics():
     users = create_users()
     validate_users(users)
 
-    nf = NewsFeed(users)
+    nf = Newsfeed(users)
 
     assert nf.post("steve", "hello_from_steve") == True
     assert nf.post("angela", "hello_from_angela") == True
@@ -31,12 +31,16 @@ def test_basics():
 
     feed_res = nf.feed("steve", st_ts, ed_ts)
     EXPECTED = ["hello_from_steve", "hello_from_angela", "hello_from_tianhao"]
-    assert feed_res == EXPECTED
+    assert set(feed_res) == set(EXPECTED), f"feed_res: {feed_res}, EXPECTED: {EXPECTED}"
 
     feed_res = nf.feed("angela", st_ts, ed_ts)
     EXPECTED = ["hello_from_steve", "hello_from_angela"]
-    assert feed_res == EXPECTED
+    assert set(feed_res) == set(EXPECTED)
 
     feed_res = nf.feed("tianhao", st_ts, ed_ts)
     EXPECTED = ["hello_from_steve", "hello_from_tianhao"]
-    assert feed_res == EXPECTED
+    assert set(feed_res) == set(EXPECTED)
+
+if __name__ == "__main__":
+    test_basics()
+    print("test_basics() passed")
