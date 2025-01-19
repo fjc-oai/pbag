@@ -1,3 +1,4 @@
+import threading
 import time
 from collections import defaultdict
 from dataclasses import dataclass
@@ -21,24 +22,27 @@ class PostService:
     def __init__(self) -> None:
         self.user_posts: dict[str, list[str]] = defaultdict(list)
         self.posts: dict[str, Post] = {}
+        self.lock = threading.Lock()
 
     def post(self, uid: str, content: str) -> bool:
         timestamp = float(time.time())
         post_id = f"{uid}-{timestamp}"
         post = Post(uid, post_id, content, timestamp)
-        self.posts[post_id] = post
-        self.user_posts[uid].append(post_id)
+        with self.lock:
+            self.posts[post_id] = post
+            self.user_posts[uid].append(post_id)
         return True
 
     def get_users_posts(self, uids: list[str], start_ts: float, end_ts: float) -> list[Post]:
         post_ids = []
-        for uid in uids:
-            post_ids += [
-                post_id
-                for post_id in self.user_posts[uid]
-                if start_ts <= self.posts[post_id].timestamp <= end_ts
-            ]
-        posts = [self.posts[post_id] for post_id in post_ids]
+        with self.lock:
+            for uid in uids:
+                post_ids += [
+                    post_id
+                    for post_id in self.user_posts[uid]
+                    if start_ts <= self.posts[post_id].timestamp <= end_ts
+                ]
+            posts = [self.posts[post_id] for post_id in post_ids]
         return posts
 
 
@@ -48,7 +52,7 @@ def post_service_handler(post_service: PostService) -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"], 
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
