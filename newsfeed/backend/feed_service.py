@@ -1,8 +1,8 @@
-from fastapi import FastAPI
 import uvicorn
-from config import SERVICE_HOST, FEED_SERVICE_PORT
-from utils import create_users, validate_users
+from config import FEED_SERVICE_PORT, SERVICE_HOST
+from fastapi import FastAPI
 from post_service import Post, PostService
+from utils import create_users, validate_users
 
 
 class FeedService:
@@ -17,6 +17,8 @@ class FeedService:
         posts.sort(key=lambda post: post.timestamp)
         return posts
 
+    def query_post_service(self, uids: list[str], start_ts: float, end_ts: float) -> list[Post]:
+        
 
 def feed_service_handler(feed_service: FeedService) -> FastAPI:
     app = FastAPI()
@@ -30,11 +32,12 @@ def feed_service_handler(feed_service: FeedService) -> FastAPI:
 
 
 def create_feed_service() -> None:
+    print(f"Starting feed service on {SERVICE_HOST}:{FEED_SERVICE_PORT}")
     users = create_users()
     validate_users(users)
+    feed_service = FeedService(users)
 
-    print(f"Starting feed service on {SERVICE_HOST}:{FEED_SERVICE_PORT}")
-    uvicorn.run(feed_service_handler(users), host=SERVICE_HOST, port=FEED_SERVICE_PORT)
+    uvicorn.run(feed_service_handler(feed_service), host=SERVICE_HOST, port=FEED_SERVICE_PORT)
 
 
 if __name__ == "__main__":

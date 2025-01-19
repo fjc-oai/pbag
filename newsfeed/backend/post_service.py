@@ -1,9 +1,10 @@
-from fastapi import FastAPI
 import time
 from collections import defaultdict
 from dataclasses import dataclass
+
 import uvicorn
-from config import SERVICE_HOST, POST_SERVICE_PORT
+from config import POST_SERVICE_PORT, SERVICE_HOST
+from fastapi import FastAPI
 
 
 @dataclass
@@ -60,7 +61,8 @@ def post_service_handler(post_service: PostService) -> FastAPI:
 
 def create_post_service() -> None:
     print(f"Starting post service on {SERVICE_HOST}:{POST_SERVICE_PORT}")
-    uvicorn.run(post_service_handler(), host=SERVICE_HOST, port=POST_SERVICE_PORT)
+    post_service = PostService()
+    uvicorn.run(post_service_handler(post_service), host=SERVICE_HOST, port=POST_SERVICE_PORT)
 
 
 if __name__ == "__main__":
