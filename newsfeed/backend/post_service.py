@@ -19,10 +19,10 @@ class PostService:
         self.user_posts: dict[str, list[str]] = defaultdict(list)
         self.posts: dict[str, Post] = {}
 
-    def post(self, uid: str, message: str) -> bool:
+    def post(self, uid: str, content: str) -> bool:
         timestamp = float(time.time())
         post_id = f"{uid}-{timestamp}"
-        post = Post(uid, post_id, message, timestamp)
+        post = Post(uid, post_id, content, timestamp)
         self.posts[post_id] = post
         self.user_posts[uid].append(post_id)
         return True
@@ -38,8 +38,8 @@ class PostService:
                 if start_ts <= self.posts[post_id].timestamp <= end_ts
             ]
 
-        feed = [self.posts[post_id] for post_id in post_ids]
-        return feed
+        posts = [self.posts[post_id] for post_id in post_ids]
+        return posts
 
 
 def post_service_handler(post_service: PostService) -> FastAPI:

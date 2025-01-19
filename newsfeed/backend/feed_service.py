@@ -7,7 +7,7 @@ from post_service import Post, PostService
 
 class FeedService:
     def __init__(self, users: dict[str, set[str]]) -> None:
-        self.users = users
+        self.users: dict[str, set[str]] = users
 
     def feed(self, uid: str, start_ts: float, end_ts: float) -> list[Post]:
         # Get the list of users that the user follows
