@@ -85,7 +85,7 @@
             }
             // (TODO) change hardcoded port and host 
             // (TODO) raise if error
-            const response = await fetch(`http://localhost:7008/post?user=${encodeURIComponent(user)}&content=${encodeURIComponent(content)}`, {
+            const response = await fetch(`http://localhost:7007/post?user=${encodeURIComponent(user)}&content=${encodeURIComponent(content)}`, {
                 method: "POST",
             });
             
@@ -103,7 +103,7 @@
             const start_ts = 0; // Example start timestamp
             const end_ts = Date.now() / 1000; // Current timestamp in seconds
             
-            const response = await fetch(`http://localhost:7009/feed?user=${user}&start_ts=${start_ts}&end_ts=${end_ts}`);
+            const response = await fetch(`http://localhost:7007/feed?user=${user}&start_ts=${start_ts}&end_ts=${end_ts}`);
             const posts = await response.json();
             alert("Feed fetched: " + JSON.stringify(posts));
             

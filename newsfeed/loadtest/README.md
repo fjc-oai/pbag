@@ -21,5 +21,5 @@
 1. 100 users, 50 QPS, latency(median, avg, p99): 5,9,62, error rate 0%
 2. 200 users, 100 QPS, latency(median, avg, p99): 5,8,55, error rate 0%
 3. 300 users, 130 QPS, latency(median, avg, p99): 4,34,700, error rate 10%
-
+use multiple workers, the QPS increased
 

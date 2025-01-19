@@ -29,9 +29,10 @@
   - [x] Latency
   - [x] Error rate
 - [x] Load test post services. Identify bottleneck
-- [ ] Load test web service iteslf, identify max QPS. 
-  - [ ] Increase num of worker. Check if max QPS changes
-- [ ] Update all services to requires going through web service
+- [x] Load test web service iteslf, identify max QPS. 
+  - [x] Increase num of worker. Check if max QPS changes
+- [x] Enable multiple worker for Post service
+- [x] Update all services to requires going through web service
   - [ ] Call burn_cpu on each request with a random latency b/t 20~50ms
 - [ ] Load test web service for post again and check max QPS
 
