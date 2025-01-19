@@ -1,12 +1,18 @@
+import random
 import urllib
 
 import httpx
 import uvicorn
-from config import FEED_SERVICE_PORT, POST_SERVICE_PORT, SERVICE_HOST
+from config import (
+    FEED_SERVICE_PORT,
+    POST_SERVICE_PORT,
+    SERVICE_HOST,
+    FEED_BURN_CPU_MS,
+)
 from fastapi import FastAPI, requests
 from fastapi.middleware.cors import CORSMiddleware
 from post_service import Post
-from utils import create_users, validate_users
+from utils import create_users, validate_users, burn_cpu
 from prometheus_fastapi_instrumentator import Instrumentator
 
 
@@ -22,9 +28,12 @@ class FeedService:
         if posts is None:
             return []
         posts.sort(key=lambda post: post.timestamp)
+        burn_cpu(FEED_BURN_CPU_MS)
         return posts
 
-    def query_post_service(self, uids: list[str], start_ts: float, end_ts: float) -> list[Post]:
+    def query_post_service(
+        self, uids: list[str], start_ts: float, end_ts: float
+    ) -> list[Post]:
         uids_query = urllib.parse.quote(",".join(uids))
         start_ts = urllib.parse.quote(str(start_ts))
         end_ts = urllib.parse.quote(str(end_ts))
@@ -68,7 +77,9 @@ def create_feed_service() -> None:
     validate_users(users)
     feed_service = FeedService(users)
 
-    uvicorn.run(feed_service_handler(feed_service), host=SERVICE_HOST, port=FEED_SERVICE_PORT)
+    uvicorn.run(
+        feed_service_handler(feed_service), host=SERVICE_HOST, port=FEED_SERVICE_PORT
+    )
 
 
 if __name__ == "__main__":

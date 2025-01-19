@@ -32,10 +32,12 @@ large_loadtest_user_config = UserConfig(mode="loadtest", n_users=1_000_000, avg_
 def get_user_config() -> UserConfig:
     global global_user_config
     if global_user_config is None:
-        global_user_config = real_user_config
+        global_user_config = small_loadtest_user_config
     return global_user_config
 
 
 LOADTEST_CLIENT_TIMEOUT_S = 2
 WEB_SERVICE_N_WORKERS = 4
 POST_SERVICE_N_WORKERS = 1
+POST_BURN_CPU_MS = 20
+FEED_BURN_CPU_MS = 100

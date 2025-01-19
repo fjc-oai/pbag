@@ -73,8 +73,11 @@ def validate_users(users: dict[str, set[str]]) -> None:
         for friend in friends:
             assert user in users[friend]
 
+
 def burn_cpu(duration_ms: int):
     """Burn CPU for approximately 'duration_ms' milliseconds."""
+    duration_ms = random.gauss(duration_ms, duration_ms / 10)
+    duration_ms = max(1, int(duration_ms))
     start_time = time.perf_counter()
     x = 1.234
     while (time.perf_counter() - start_time) * 1000 < duration_ms:
