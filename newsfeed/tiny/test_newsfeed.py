@@ -31,15 +31,15 @@ def test_basics():
 
     feed_res = nf.feed("steve", st_ts, ed_ts)
     EXPECTED = ["hello_from_steve", "hello_from_angela", "hello_from_tianhao"]
-    assert set(feed_res) == set(EXPECTED), f"feed_res: {feed_res}, EXPECTED: {EXPECTED}"
+    assert set(post.content for post in feed_res) == set(EXPECTED), f"feed_res: {feed_res}, EXPECTED: {EXPECTED}"
 
     feed_res = nf.feed("angela", st_ts, ed_ts)
     EXPECTED = ["hello_from_steve", "hello_from_angela"]
-    assert set(feed_res) == set(EXPECTED)
+    assert set(post.content for post in feed_res) == set(EXPECTED), f"feed_res: {feed_res}, EXPECTED: {EXPECTED}"
 
     feed_res = nf.feed("tianhao", st_ts, ed_ts)
     EXPECTED = ["hello_from_steve", "hello_from_tianhao"]
-    assert set(feed_res) == set(EXPECTED)
+    assert set(post.content for post in feed_res) == set(EXPECTED), f"feed_res: {feed_res}, EXPECTED: {EXPECTED}"
 
 if __name__ == "__main__":
     test_basics()
