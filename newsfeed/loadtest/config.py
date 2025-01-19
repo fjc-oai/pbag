@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import literal
 
 SERVICE_HOST = "0.0.0.0"
-WEB_SERVICE_PORT = 8000
+WEB_SERVICE_PORT = 7007
 POST_SERVICE_PORT = 7008
 FEED_SERVICE_PORT = 7009
 

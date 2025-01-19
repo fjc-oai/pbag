@@ -7,6 +7,7 @@ from fastapi import FastAPI, requests
 from fastapi.middleware.cors import CORSMiddleware
 from post_service import Post
 from utils import create_users, validate_users
+from prometheus_fastapi_instrumentator import Instrumentator
 
 
 class FeedService:
@@ -43,6 +44,7 @@ class FeedService:
 
 def feed_service_handler(feed_service: FeedService) -> FastAPI:
     app = FastAPI()
+    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
     # Allow CORS. Otherwise, the frontend cannot properly render the feed !!!!!! IMPORTANT !!!!!!
     app.add_middleware(
