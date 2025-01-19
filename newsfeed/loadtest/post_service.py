@@ -6,6 +6,7 @@ import uvicorn
 from config import POST_SERVICE_PORT, SERVICE_HOST
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 
 @dataclass
@@ -43,6 +44,7 @@ class PostService:
 
 def post_service_handler(post_service: PostService) -> FastAPI:
     app = FastAPI()
+    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
     app.add_middleware(
         CORSMiddleware,
