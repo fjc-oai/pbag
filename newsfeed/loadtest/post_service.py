@@ -1,13 +1,20 @@
+import random
 import threading
 import time
 from collections import defaultdict
 from dataclasses import dataclass
 import uvicorn
 
-from config import POST_SERVICE_PORT, SERVICE_HOST, POST_SERVICE_N_WORKERS
+from config import (
+    POST_SERVICE_PORT,
+    SERVICE_HOST,
+    POST_SERVICE_N_WORKERS,
+    POST_BURN_CPU_MS,
+)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
+from utils import burn_cpu
 
 
 @dataclass
@@ -32,9 +39,12 @@ class PostService:
         with self.lock:
             self.posts[post_id] = new_post
             self.user_posts[uid].append(post_id)
+        burn_cpu(POST_BURN_CPU_MS)
         return True
 
-    def get_users_posts(self, uids: list[str], start_ts: float, end_ts: float) -> list[Post]:
+    def get_users_posts(
+        self, uids: list[str], start_ts: float, end_ts: float
+    ) -> list[Post]:
         post_ids = []
         with self.lock:
             for uid in uids:
@@ -93,5 +103,5 @@ if __name__ == "__main__":
         host=SERVICE_HOST,
         port=POST_SERVICE_PORT,
         workers=POST_SERVICE_N_WORKERS,
-        reload=False
+        reload=False,
     )

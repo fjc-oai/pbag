@@ -33,19 +33,8 @@
   - [x] Increase num of worker. Check if max QPS changes
 - [x] Enable multiple worker for Post service
 - [x] Update all services to requires going through web service
-  - [ ] Call burn_cpu on each request with a random latency b/t 20~50ms
+  - [x] Call burn_cpu on each request with a random latency b/t 20~50ms
 - [ ] Load test web service for post again and check max QPS
-
-## 5. Scale up TBD
-1. Option 1 - sharding and load balance
-   1. Request routing on web service, shard the backend
-   2. Service discovery
-   3. Load monitoring
-   4. Implementation
-      1. easiest: client round-robin
-      2. 2nd easiest: client maintain a util
-      3. reasonable: load polling
-2. Option 2 - pull model using Kafka
 
 ### Set up Prometheus and Grafana
 1. brew install prometheus
@@ -68,5 +57,16 @@
    2. View metrics at http://localhost:9090/graph.
    3. Add query `rate(http_requests_total[1m]) * 60`
 
+### max throughput of post service before scaling up
+![max throughput of post service before scaling up](image.png)
 
-## 6. 
+## 5. Scale up TBD
+1. Option 1 - sharding and load balance
+   1. Request routing on web service, shard the backend
+   2. Service discovery
+   3. Load monitoring
+   4. Implementation
+      1. easiest: client round-robin
+      2. 2nd easiest: client maintain a util
+      3. reasonable: load polling
+2. Option 2 - pull model using Kafka
