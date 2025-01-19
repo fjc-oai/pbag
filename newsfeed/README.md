@@ -5,6 +5,7 @@
   - [4. Load test](#4-load-test)
   - [5. Scale up TBD](#5-scale-up-tbd)
     - [Set up Prometheus and Grafana](#set-up-prometheus-and-grafana)
+  - [6.](#6)
 
 # Toy Newsfeed
 
@@ -23,15 +24,27 @@
 - [ ][Low] Fix FastApi type for uids list[str] 
 
 ## 4. Load test
-- [ ] Build monitoring system
-  - [ ] QPS for each API
-  - [ ] Latency
-  - [ ] Error rate
-- [ ] Load test services. Identify bottleneck
+- [x] Build monitoring system
+  - [x] QPS for each API
+  - [x] Latency
+  - [x] Error rate
+- [x] Load test post services. Identify bottleneck
+- [ ] Load test web service iteslf, identify max QPS. 
+  - [ ] Increase num of worker. Check if max QPS changes
+- [ ] Update all services to requires going through web service
+  - [ ] Call burn_cpu on each request with a random latency b/t 20~50ms
+- [ ] Load test web service for post again and check max QPS
 
 ## 5. Scale up TBD
-- [ ] Kafka to scale up post service
-- [ ] LB for feed service
+1. Option 1 - sharding and load balance
+   1. Request routing on web service, shard the backend
+   2. Service discovery
+   3. Load monitoring
+   4. Implementation
+      1. easiest: client round-robin
+      2. 2nd easiest: client maintain a util
+      3. reasonable: load polling
+2. Option 2 - pull model using Kafka
 
 ### Set up Prometheus and Grafana
 1. brew install prometheus
@@ -53,3 +66,6 @@
    1. Check Prometheus at http://localhost:9090/targets to see if your FastAPI app is “UP.”
    2. View metrics at http://localhost:9090/graph.
    3. Add query `rate(http_requests_total[1m]) * 60`
+
+
+## 6. 
