@@ -1,6 +1,11 @@
+from pathlib import Path
+
 import uvicorn
 from config import WEB_SERVICE_HOST, WEB_SERVICE_PORT
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 from utils import create_users, validate_users
 
 from newsfeed import Newsfeed
@@ -8,6 +13,18 @@ from newsfeed import Newsfeed
 
 def web_service_handler(newsfeed: Newsfeed) -> FastAPI:
     app = FastAPI()
+
+    static_dir = Path(__file__).parent / "static"
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+    # class PostRequest(BaseModel):
+    #     user: str
+    #     content: str
+
+    # @app.post("/post")
+    # def post(request: PostRequest):
+    #     print(f"User {request.user} is posting {request.content}")
+    #     return newsfeed.post(request.user, request.content)
 
     @app.post("/post")
     def post(user: str, content: str):
@@ -19,9 +36,9 @@ def web_service_handler(newsfeed: Newsfeed) -> FastAPI:
         print(f"User {user} requested feed between {start_ts} and {end_ts}")
         return newsfeed.feed(user, start_ts, end_ts)
 
-    @app.get("/home")
+    @app.get("/")
     def home():
-        return "Welcome to the Newsfeed!"
+        return FileResponse(static_dir / "index.html")
 
     return app
 
