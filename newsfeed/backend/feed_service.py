@@ -1,6 +1,8 @@
+import urllib
 import uvicorn
-from config import FEED_SERVICE_PORT, SERVICE_HOST
-from fastapi import FastAPI
+import httpx
+from config import FEED_SERVICE_PORT, POST_SERVICE_PORT, SERVICE_HOST
+from fastapi import FastAPI, requests
 from post_service import Post, PostService
 from utils import create_users, validate_users
 
@@ -13,12 +15,31 @@ class FeedService:
         # Get the list of users that the user follows
         assert uid in self.users, f"User {uid} does not exist"
         friends = self.users.get(uid, set())
-        posts = PostService.get_users_posts(friends + uid, start_ts, end_ts)
+        posts = self.query_post_service([uid] + list(friends), start_ts, end_ts)
+        if posts is None:
+            return []
         posts.sort(key=lambda post: post.timestamp)
         return posts
 
-    def query_post_service(self, uids: list[str], start_ts: float, end_ts: float) -> list[Post]:
-        
+    def query_post_service(
+        self, uids: list[str], start_ts: float, end_ts: float
+    ) -> list[Post]:
+        uids_str = ",".join([urllib.parse.quote(uid) for uid in uids])
+        start_ts = urllib.parse.quote(str(start_ts))
+        end_ts = urllib.parse.quote(str(end_ts))
+        url = f"http://{SERVICE_HOST}:{POST_SERVICE_PORT}/get_users_posts?uids={uids_str}&start_ts={start_ts}&end_ts={end_ts}"
+        try:
+            response = httpx.get(url, timeout=5)
+            if response.status_code == 200:
+                print(response.json())
+                return response.json()
+            else:
+                print(f"Error querying post service: {response.text}")
+                return None
+        except requests.exceptions.RequestException as e:
+            print(f"Error querying post service: {e}")
+            return None
+
 
 def feed_service_handler(feed_service: FeedService) -> FastAPI:
     app = FastAPI()
@@ -37,7 +58,9 @@ def create_feed_service() -> None:
     validate_users(users)
     feed_service = FeedService(users)
 
-    uvicorn.run(feed_service_handler(feed_service), host=SERVICE_HOST, port=FEED_SERVICE_PORT)
+    uvicorn.run(
+        feed_service_handler(feed_service), host=SERVICE_HOST, port=FEED_SERVICE_PORT
+    )
 
 
 if __name__ == "__main__":
