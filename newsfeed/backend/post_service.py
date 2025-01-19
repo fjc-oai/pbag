@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import uvicorn
 from config import POST_SERVICE_PORT, SERVICE_HOST
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 
 @dataclass
@@ -28,9 +29,7 @@ class PostService:
         self.user_posts[uid].append(post_id)
         return True
 
-    def get_users_posts(
-        self, uids: list[str], start_ts: float, end_ts: float
-    ) -> list[Post]:
+    def get_users_posts(self, uids: list[str], start_ts: float, end_ts: float) -> list[Post]:
         post_ids = []
         for uid in uids:
             post_ids += [
@@ -38,7 +37,6 @@ class PostService:
                 for post_id in self.user_posts[uid]
                 if start_ts <= self.posts[post_id].timestamp <= end_ts
             ]
-
         posts = [self.posts[post_id] for post_id in post_ids]
         return posts
 
@@ -46,14 +44,24 @@ class PostService:
 def post_service_handler(post_service: PostService) -> FastAPI:
     app = FastAPI()
 
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"], 
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     @app.post("/post")
     def post(user: str, content: str):
         print(f"User {user} is posting {content}")
         return post_service.post(user, content)
 
     @app.get("/get_users_posts")
-    def get_users_posts(uids: list[str], start_ts: float, end_ts: float):
-        print(f"Getting posts for users {uids} between {start_ts} and {end_ts}")
+    def get_users_posts(
+        uids: str, start_ts: float, end_ts: float
+    ):  # TODO (mhr): use list[str] instead of str hack!!!
+        uids = uids.split(",")
         return post_service.get_users_posts(uids, start_ts, end_ts)
 
     return app

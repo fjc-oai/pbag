@@ -204,6 +204,7 @@
             
             const response = await fetch(`http://localhost:7009/feed?user=${user}&start_ts=${start_ts}&end_ts=${end_ts}`);
             const posts = await response.json();
+            alert("Feed fetched: " + JSON.stringify(posts));
             
             const feedContainer = document.getElementById("feed-content");
             feedContainer.innerHTML = "";

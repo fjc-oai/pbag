@@ -1,9 +1,11 @@
 import urllib
-import uvicorn
+
 import httpx
+import uvicorn
 from config import FEED_SERVICE_PORT, POST_SERVICE_PORT, SERVICE_HOST
 from fastapi import FastAPI, requests
-from post_service import Post, PostService
+from fastapi.middleware.cors import CORSMiddleware
+from post_service import Post
 from utils import create_users, validate_users
 
 
@@ -21,32 +23,38 @@ class FeedService:
         posts.sort(key=lambda post: post.timestamp)
         return posts
 
-    def query_post_service(
-        self, uids: list[str], start_ts: float, end_ts: float
-    ) -> list[Post]:
-        uids_str = ",".join([urllib.parse.quote(uid) for uid in uids])
+    def query_post_service(self, uids: list[str], start_ts: float, end_ts: float) -> list[Post]:
+        uids_query = urllib.parse.quote(",".join(uids))
         start_ts = urllib.parse.quote(str(start_ts))
         end_ts = urllib.parse.quote(str(end_ts))
-        url = f"http://{SERVICE_HOST}:{POST_SERVICE_PORT}/get_users_posts?uids={uids_str}&start_ts={start_ts}&end_ts={end_ts}"
+        url = f"http://{SERVICE_HOST}:{POST_SERVICE_PORT}/get_users_posts?uids={uids_query}&start_ts={start_ts}&end_ts={end_ts}"
         try:
-            response = httpx.get(url, timeout=5)
-            if response.status_code == 200:
-                print(response.json())
-                return response.json()
+            resp = httpx.get(url, timeout=3)
+            if resp.status_code == 200:
+                posts = [Post(**post) for post in resp.json()]
+                return posts
             else:
-                print(f"Error querying post service: {response.text}")
-                return None
-        except requests.exceptions.RequestException as e:
+                print(f"Error querying post service: {resp.text}")
+                raise Exception(f"Error querying post service: {resp.status_code=}")
+        except Exception as e:
             print(f"Error querying post service: {e}")
-            return None
+            raise e
 
 
 def feed_service_handler(feed_service: FeedService) -> FastAPI:
     app = FastAPI()
 
+    # Allow CORS. Otherwise, the frontend cannot properly render the feed !!!!!! IMPORTANT !!!!!!
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # or a list of specific origins/domains if you prefer
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     @app.get("/feed")
     def feed(user: str, start_ts: float, end_ts: float):
-        print(f"Getting feed for user {user} between {start_ts} and {end_ts}")
         return feed_service.feed(user, start_ts, end_ts)
 
     return app
@@ -58,9 +66,7 @@ def create_feed_service() -> None:
     validate_users(users)
     feed_service = FeedService(users)
 
-    uvicorn.run(
-        feed_service_handler(feed_service), host=SERVICE_HOST, port=FEED_SERVICE_PORT
-    )
+    uvicorn.run(feed_service_handler(feed_service), host=SERVICE_HOST, port=FEED_SERVICE_PORT)
 
 
 if __name__ == "__main__":
