@@ -1,4 +1,5 @@
 import random
+import time
 
 from config import get_user_config
 
@@ -71,3 +72,10 @@ def validate_users(users: dict[str, set[str]]) -> None:
         assert user not in friends
         for friend in friends:
             assert user in users[friend]
+
+def burn_cpu(duration_ms: int):
+    """Burn CPU for approximately 'duration_ms' milliseconds."""
+    start_time = time.perf_counter()
+    x = 1.234
+    while (time.perf_counter() - start_time) * 1000 < duration_ms:
+        x = (x * 3.21) / 1.23

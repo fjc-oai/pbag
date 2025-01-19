@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import literal
 
 SERVICE_HOST = "0.0.0.0"
 WEB_SERVICE_PORT = 7007
@@ -18,8 +17,8 @@ class UserConfig:
         assert self.n_users >= 0, f"Invalid number of users: {self.n_users}"
         assert self.avg_n_friends >= 0, f"Invalid average number of friends: {self.avg_n_friends}"
         assert (
-            self.avg_n_friends < self.n_users
-        ), f"Average number of friends must be less than number of users"
+            self.avg_n_friends <= self.n_users
+        ), f"Average number of friends must be less than number of users {self.avg_n_friends} < {self.n_users}"
 
 
 global_user_config = None
@@ -35,3 +34,6 @@ def get_user_config() -> UserConfig:
     if global_user_config is None:
         global_user_config = small_loadtest_user_config
     return global_user_config
+
+
+LOADTEST_CLIENT_TIMEOUT_S = 2
