@@ -1,3 +1,4 @@
+import argparse
 import random
 import threading
 import time
@@ -15,7 +16,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from utils import burn_cpu
-
 
 @dataclass
 class Post:
@@ -50,9 +50,9 @@ class PostService:
             for uid in uids:
                 # gather all post_ids within the time range
                 post_ids += [
-                    pid
-                    for pid in self.user_posts[uid]
-                    if start_ts <= self.posts[pid].timestamp <= end_ts
+                    post_id
+                    for post_id in self.user_posts[uid]
+                    if start_ts <= self.posts[post_id].timestamp <= end_ts
                 ]
         return [self.posts[pid] for pid in post_ids]
 
@@ -97,11 +97,15 @@ def create_app() -> FastAPI:
 app = create_app()
 
 if __name__ == "__main__":
-    print(f"Starting Post Service on {SERVICE_HOST}:{POST_SERVICE_PORT}")
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("--port", type=int, default=POST_SERVICE_PORT)
+    args = argparser.parse_args()
+    port = args.port
+    print(f"Starting Post Service on {SERVICE_HOST}:{port}")
     uvicorn.run(
         "post_service:app",  # Import string
         host=SERVICE_HOST,
-        port=POST_SERVICE_PORT,
+        port=port,
         workers=POST_SERVICE_N_WORKERS,
         reload=False,
     )

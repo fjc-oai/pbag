@@ -62,13 +62,17 @@
 ![max throughput of post service before scaling up](image.png)
 
 ## 5. Shard Post Service
-1. [ ] Implement sharded service client
-2. [ ] Integrate sharded client with Web service and Feed service
-3. [ ] Test on UI and verify correctness
+1. [x] Implement sharded service client
+2. [x] Integrate sharded client with Web service and Feed service
+3. [x] Test on UI and verify correctness
 4. [ ] Write a e2e test upon real users: make couple posts (sharded version), and query feeds, verify correctness
 5. [ ] Loadtest and check how much max QPS improves
    1. [ ] Spawm multiple post service as processed in the same host
    2. [ ] Spawm multiple post services across hosts
+
+[TODO] check all the servers are up at the init time
+
+![multiple post service same host](image-1.png)
 
 ## 6. Scale up TBD
 1. Option 1 - sharding and load balance

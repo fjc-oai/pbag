@@ -8,10 +8,11 @@ from config import (
     SERVICE_HOST,
     WEB_SERVICE_PORT,
     WEB_SERVICE_N_WORKERS,
-    POST_SERVICE_PORT,
     FEED_SERVICE_PORT,
+    post_service_servers
 )
 import uvicorn
+from client_lib import ShardedPostServiceClient
 
 
 static_dir = Path(__file__).parent / "static"
@@ -20,6 +21,8 @@ static_dir = Path(__file__).parent / "static"
 app = FastAPI()
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+sharded_post_service_client = ShardedPostServiceClient(post_service_servers)
 
 
 @app.get("/")
@@ -34,11 +37,7 @@ def forward_post(user: str, content: str):
     This endpoint receives a post request from the client,
     then forwards it to the post service via httpx (sync).
     """
-    post_service_url = f"http://{SERVICE_HOST}:{POST_SERVICE_PORT}/post"
-    params = {"user": user, "content": content}
-    response = httpx.post(post_service_url, params=params)
-    response.raise_for_status()
-    return response.json()
+    return sharded_post_service_client.post(user, content)
 
 
 @app.get("/feed")
