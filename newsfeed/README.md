@@ -3,9 +3,10 @@
   - [2. Web](#2-web)
   - [3. Backend](#3-backend)
   - [4. Load test](#4-load-test)
-  - [5. Scale up TBD](#5-scale-up-tbd)
     - [Set up Prometheus and Grafana](#set-up-prometheus-and-grafana)
-  - [6.](#6)
+    - [max throughput of post service before scaling up](#max-throughput-of-post-service-before-scaling-up)
+  - [5. Shard Post Service](#5-shard-post-service)
+  - [6. Scale up TBD](#6-scale-up-tbd)
 
 # Toy Newsfeed
 
@@ -60,7 +61,16 @@
 ### max throughput of post service before scaling up
 ![max throughput of post service before scaling up](image.png)
 
-## 5. Scale up TBD
+## 5. Shard Post Service
+1. [ ] Implement sharded service client
+2. [ ] Integrate sharded client with Web service and Feed service
+3. [ ] Test on UI and verify correctness
+4. [ ] Write a e2e test upon real users: make couple posts (sharded version), and query feeds, verify correctness
+5. [ ] Loadtest and check how much max QPS improves
+   1. [ ] Spawm multiple post service as processed in the same host
+   2. [ ] Spawm multiple post services across hosts
+
+## 6. Scale up TBD
 1. Option 1 - sharding and load balance
    1. Request routing on web service, shard the backend
    2. Service discovery

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Newsfeed</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            display: flex;
+            width: 60%;
+            height: 400px;
+            border: 1px solid #ccc;
+        }
+        .panel {
+            flex: 1;
+            padding: 20px;
+            border-right: 1px solid #ccc;
+        }
+        .panel:last-child {
+            border-right: none;
+        }
+        textarea, input, button {
+            display: block;
+            margin-top: 10px;
+            width: 100%;
+        }
+        #feed-content {
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 250px;
+            overflow-y: auto;
+            background: #f9f9f9;
+        }
+        .post {
+            border-bottom: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: white;
+        }
+        .post:last-child {
+            border-bottom: none;
+        }
+        .post .uid {
+            font-weight: bold;
+        }
+        .post .timestamp {
+            font-size: 0.8em;
+            color: gray;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel">
+            <h2>Post</h2>
+            <label for="user-id">User ID:</label>
+            <input type="text" id="user-id" placeholder="Enter your user ID">
+            <label for="content">Content:</label>
+            <textarea id="content" placeholder="Write something..."></textarea>
+            <button onclick="postContent()">Submit</button>
+        </div>
+        <div class="panel">
+            <h2>Feed</h2>
+            <button onclick="fetchFeed()">Show Feed</button>
+            <div id="feed-content">Your feed will appear here.</div>
+        </div>
+    </div>
+
+    <script>
+        async function postContent() {
+            const user = document.getElementById("user-id").value;
+            const content = document.getElementById("content").value;
+            
+            if (!user || !content) {
+                alert("User ID and content cannot be empty!");
+                return;
+            }
+            // (TODO) change hardcoded port and host 
+            // (TODO) raise if error
+            const response = await fetch(`http://localhost:7007/post?user=${encodeURIComponent(user)}&content=${encodeURIComponent(content)}`, {
+                method: "POST",
+            });
+            
+            const result = await response.json();
+            alert("Post successful: " + JSON.stringify(result));
+        }
+
+        async function fetchFeed() {
+            const user = document.getElementById("user-id").value;
+            if (!user) {
+                alert("User ID cannot be empty!");
+                return;
+            }
+            
+            const start_ts = 0; // Example start timestamp
+            const end_ts = Date.now() / 1000; // Current timestamp in seconds
+            
+            const response = await fetch(`http://localhost:7007/feed?user=${user}&start_ts=${start_ts}&end_ts=${end_ts}`);
+            const posts = await response.json();
+            alert("Feed fetched: " + JSON.stringify(posts));
+            
+            const feedContainer = document.getElementById("feed-content");
+            feedContainer.innerHTML = "";
+            
+            posts.forEach(post => {
+                const postElement = document.createElement("div");
+                postElement.classList.add("post");
+                postElement.innerHTML = `
+                    <div class="uid">${post.uid}</div>
+                    <div class="timestamp">${new Date(post.timestamp * 1000).toLocaleString()}</div>
+                    <div class="content">${post.content}</div>
+                `;
+                feedContainer.appendChild(postElement);
+            });
+        }
+    </script>
+</body>
+</html>

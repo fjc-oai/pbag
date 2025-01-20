@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 5s  # scrape every 5 seconds
+
+scrape_configs:
+  - job_name: "web_service"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["localhost:7007"]
+
+  - job_name: "post_service"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["localhost:7008"]
+
+  - job_name: "feed_service"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["localhost:7009"]
