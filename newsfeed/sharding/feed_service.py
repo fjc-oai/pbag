@@ -1,19 +1,16 @@
-import random
-import urllib
-
-import httpx
 import uvicorn
 from config import (
     FEED_SERVICE_PORT,
-    POST_SERVICE_PORT,
     SERVICE_HOST,
     FEED_BURN_CPU_MS,
+    post_service_servers,
 )
 from fastapi import FastAPI, requests
 from fastapi.middleware.cors import CORSMiddleware
 from post_service import Post
 from utils import create_users, validate_users, burn_cpu
 from prometheus_fastapi_instrumentator import Instrumentator
+from client_lib import ShardedPostServiceClient
 
 
 class FeedService:
@@ -22,7 +19,7 @@ class FeedService:
 
     def feed(self, uid: str, start_ts: float, end_ts: float) -> list[Post]:
         # Get the list of users that the user follows
-        assert uid in self.users, f"User {uid} does not exist"
+        assert uid in self.users, f"User {uid} does not exist, f{self.users=}"
         friends = self.users.get(uid, set())
         posts = self.query_post_service([uid] + list(friends), start_ts, end_ts)
         if posts is None:
@@ -34,21 +31,8 @@ class FeedService:
     def query_post_service(
         self, uids: list[str], start_ts: float, end_ts: float
     ) -> list[Post]:
-        uids_query = urllib.parse.quote(",".join(uids))
-        start_ts = urllib.parse.quote(str(start_ts))
-        end_ts = urllib.parse.quote(str(end_ts))
-        url = f"http://{SERVICE_HOST}:{POST_SERVICE_PORT}/get_users_posts?uids={uids_query}&start_ts={start_ts}&end_ts={end_ts}"
-        try:
-            resp = httpx.get(url, timeout=3)
-            if resp.status_code == 200:
-                posts = [Post(**post) for post in resp.json()]
-                return posts
-            else:
-                print(f"Error querying post service: {resp.text}")
-                raise Exception(f"Error querying post service: {resp.status_code=}")
-        except Exception as e:
-            print(f"Error querying post service: {e}")
-            raise e
+        sharded_post_service_client = ShardedPostServiceClient(post_service_servers)
+        return sharded_post_service_client.get_users_posts(uids, start_ts, end_ts)
 
 
 def feed_service_handler(feed_service: FeedService) -> FastAPI:

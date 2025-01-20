@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 
 SERVICE_HOST = "0.0.0.0"
+ANOTHER_HOST = "192.168.1.204"
 WEB_SERVICE_PORT = 7007
-POST_SERVICE_PORT = 7008
-FEED_SERVICE_PORT = 7009
+FEED_SERVICE_PORT = 7008
+POST_SERVICE_PORT = 7009
 
 
 @dataclass
@@ -32,7 +33,7 @@ large_loadtest_user_config = UserConfig(mode="loadtest", n_users=1_000_000, avg_
 def get_user_config() -> UserConfig:
     global global_user_config
     if global_user_config is None:
-        global_user_config = small_loadtest_user_config
+        global_user_config = mid_loadtest_user_config
     return global_user_config
 
 
@@ -41,3 +42,18 @@ WEB_SERVICE_N_WORKERS = 4
 POST_SERVICE_N_WORKERS = 1
 POST_BURN_CPU_MS = 20
 FEED_BURN_CPU_MS = 100
+
+
+@dataclass(frozen=True)
+class Server:
+    host: str
+    port: int
+
+post_service_servers = [
+    Server(SERVICE_HOST, POST_SERVICE_PORT),
+    Server(SERVICE_HOST, POST_SERVICE_PORT + 1),
+    Server(SERVICE_HOST, POST_SERVICE_PORT + 2),
+    Server(ANOTHER_HOST, POST_SERVICE_PORT + 1),
+    Server(ANOTHER_HOST, POST_SERVICE_PORT + 2),
+    Server(ANOTHER_HOST, POST_SERVICE_PORT + 3),
+]
