@@ -22,6 +22,8 @@ app = FastAPI()
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+sharded_post_service_client = ShardedPostServiceClient(post_service_servers)
+
 
 @app.get("/")
 def home():
@@ -35,7 +37,6 @@ def forward_post(user: str, content: str):
     This endpoint receives a post request from the client,
     then forwards it to the post service via httpx (sync).
     """
-    sharded_post_service_client = ShardedPostServiceClient(post_service_servers)
     return sharded_post_service_client.post(user, content)
 
 

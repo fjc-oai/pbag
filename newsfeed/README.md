@@ -70,6 +70,8 @@
    1. [ ] Spawm multiple post service as processed in the same host
    2. [ ] Spawm multiple post services across hosts
 
+[TODO] check all the servers are up at the init time
+
 ![multiple post service same host](image-1.png)
 
 ## 6. Scale up TBD

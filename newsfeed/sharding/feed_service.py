@@ -16,6 +16,7 @@ from client_lib import ShardedPostServiceClient
 class FeedService:
     def __init__(self, users: dict[str, set[str]]) -> None:
         self.users: dict[str, set[str]] = users
+        self.sharded_post_service_client = ShardedPostServiceClient(post_service_servers)
 
     def feed(self, uid: str, start_ts: float, end_ts: float) -> list[Post]:
         # Get the list of users that the user follows
@@ -31,8 +32,7 @@ class FeedService:
     def query_post_service(
         self, uids: list[str], start_ts: float, end_ts: float
     ) -> list[Post]:
-        sharded_post_service_client = ShardedPostServiceClient(post_service_servers)
-        return sharded_post_service_client.get_users_posts(uids, start_ts, end_ts)
+        return self.sharded_post_service_client.get_users_posts(uids, start_ts, end_ts)
 
 
 def feed_service_handler(feed_service: FeedService) -> FastAPI:
