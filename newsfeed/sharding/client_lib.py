@@ -1,15 +1,19 @@
-from collections import defaultdict
 import hashlib
+import urllib
+from collections import defaultdict
 
 import httpx
-import urllib
-from post_service import Post
 from config import Server
+from post_service import Post
 
 
 class ShardedPostServiceClient:
     def __init__(self, servers: list[Server]) -> None:
         self.servers = servers
+        self.httpx_client = httpx.Client()
+
+    def __del__(self):
+        self.httpx_client.close()
 
     def post(self, uid: str, content: str) -> bool:
         post_server = self._shard(uid)
@@ -19,9 +23,7 @@ class ShardedPostServiceClient:
         response.raise_for_status()
         return response.json()
 
-    def get_users_posts(
-        self, uids: list[str], start_ts: float, end_ts: float
-    ) -> list[Post]:
+    def get_users_posts(self, uids: list[str], start_ts: float, end_ts: float) -> list[Post]:
         post_servers_uids = self._shard_uids(uids)
         all_posts = []
         start_ts = urllib.parse.quote(str(start_ts))
@@ -30,7 +32,7 @@ class ShardedPostServiceClient:
             uids_query = urllib.parse.quote(",".join(uids))
             url = f"http://{post_server.host}:{post_server.port}/get_users_posts?uids={uids_query}&start_ts={start_ts}&end_ts={end_ts}"
             try:
-                resp = httpx.get(url, timeout=3)
+                resp = self.httpx_client.get(url, timeout=3)
                 if resp.status_code == 200:
                     posts = [Post(**post) for post in resp.json()]
                     all_posts.extend(posts)
