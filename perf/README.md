@@ -6,6 +6,7 @@
 - [CUDA Threading Model](#cuda-threading-model)
 - [Bandwidth Test](#bandwidth-test)
   - [HBM to SMEM](#hbm-to-smem)
+    - [Disk \<\> Host Mem](#disk--host-mem)
 
 
 
@@ -55,3 +56,6 @@
   - [ ] How to correctly reducing the impact of cache in test bandwidth 
   - [ ] How does numk of kernel block/grid affecting mem bandwidth? More parallelism, or more contention?
   
+### Disk <> Host Mem
+- Mem write to disk: ~500MB/s
+- Mem read from disk: 2~5GB/s
