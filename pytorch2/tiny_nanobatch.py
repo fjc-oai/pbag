@@ -58,7 +58,7 @@ from torch.utils.checkpoint import checkpoint
 
 
 @dataclass
-class Config:
+class ModelConfig:
     mode: Literal["vanilla", "ckpt", "nano", "nano2"] = "vanilla"
     bs: int = 4096 * 2
     d_model: int = 1024
@@ -106,7 +106,7 @@ class Chunked(torch.autograd.Function):
 
 
 class Block(torch.nn.Module):
-    def __init__(self, config: Config):
+    def __init__(self, config: ModelConfig):
         super(Block, self).__init__()
         self.config = config
         self.layer1 = torch.nn.Linear(config.d_model, config.d_model)
@@ -153,7 +153,7 @@ class Block(torch.nn.Module):
 
 
 class Model(torch.nn.Module):
-    def __init__(self, config: Config):
+    def __init__(self, config: ModelConfig):
         super(Model, self).__init__()
         self.config = config
         self.proj_in = torch.nn.Linear(config.d_model, config.d_model)
@@ -176,7 +176,7 @@ class Model(torch.nn.Module):
         return x
 
 
-def run_fwd_bwd(config: Config, test_config: TestConfig):
+def run_fwd_bwd(config: ModelConfig, test_config: TestConfig):
     if test_config.profile_memory:
         torch.cuda.memory._record_memory_history(enabled=None)
         torch.cuda.empty_cache()
@@ -232,14 +232,14 @@ def colorize_result(match: bool) -> str:
 
 
 def test(test_config: TestConfig):
-    vanilla_config = Config(mode="vanilla")
-    ckpt_config = Config(mode="ckpt")
-    nano_config = Config(mode="nano")
-    nano2_config = Config(mode="nano2")
+    vanilla_config = ModelConfig(mode="vanilla")
+    ckpt_config = ModelConfig(mode="ckpt")
+    nano_config = ModelConfig(mode="nano")
+    nano2_config = ModelConfig(mode="nano2")
 
     if test_config.cmp_results:
-        ckpt_res = run_fwd_bwd(ckpt_config, test_config)
         vanilla_res = run_fwd_bwd(vanilla_config, test_config)
+        ckpt_res = run_fwd_bwd(ckpt_config, test_config)
         nano_res = run_fwd_bwd(nano_config, test_config)
         nano2_res = run_fwd_bwd(nano2_config, test_config)
         print(f"vanilla vs ckpt: {colorize_result(cmp_results(vanilla_res, ckpt_res))}")
