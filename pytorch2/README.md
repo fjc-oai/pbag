@@ -10,6 +10,10 @@
   - [Autograd engine](#autograd-engine)
   - [Peak memory](#peak-memory)
   - [Toy implementation](#toy-implementation)
+- [Nano-Batching](#nano-batching)
+  - [Under the hood](#under-the-hood-1)
+  - [Peak memory analysis](#peak-memory-analysis)
+  - [Toy implementation](#toy-implementation-1)
 - [Autograd \& Computation graph](#autograd--computation-graph)
   - [Concepts](#concepts)
   - [Data structure](#data-structure)
@@ -149,6 +153,50 @@ $ python tiny_checkpoint.py
 no_op peak memory: 940.07 MB
 toy peak memory: 688.08 MB
 torch peak memory: 688.08 MB
+```
+
+# Nano-Batching
+## Under the hood
+1. Similar to activation checkpointing, yet another approach to save GPU memory
+2. By subdividing microbatches further into nanobatches at the most memory-intensive layers, it reduces peak memory usage.
+3. Instead of storing full intermediate activations, only a chunk is computed and stored at a time, running fwd followed by immediate backward.
+
+## Peak memory analysis
+
+Consider a model with N layers, where each layer produces: X bytes of input activations, Y bytes of intermediate activations
+
+1. Vanilla model: 
+   1. All activations, both input and intermediate, are stored throughout the forward pass to support backward
+   3. Peak usage: N * (X + Y)
+   4. <img src='images/vanilla.png' width='300'>
+2. Activation checkpointing:
+   1. All input activations are retrained
+   2. Intermediate activations are recomputed as needed, so **only one full intermediate tensor is held at any given time**
+   3. Peak usage: N * X + Y
+   4. <img src='images/act_ckpt.png' width='300'>
+3. Nanobatch:
+   1. All input activations are retrained
+   2. Intermediate activations are recomputed but in smaller chunks, thus **only a fraction of an intermediate tensor is held at any one time**
+   3. Peak usage: N * X + Y / N_CHUNKS
+   4. <img src='images/nano.png' width='300'>
+
+Check out `./nanobatch_mem_profile` for original mem profiles.
+
+
+## Toy implementation
+```
+$ py tiny_nanobatch.py
+################################################################################
+Testing correctness
+vanilla vs ckpt: match
+vanilla vs nano: match
+vanilla vs nano2: match
+################################################################################
+Testing memory usage
+Peak memory usage [vanilla]: 1516.14 MB
+Peak memory usage [ckpt]: 880.14 MB
+Peak memory usage [nano]: 748.14 MB
+Peak memory usage [nano2]: 748.14 MB
 ```
 
 
