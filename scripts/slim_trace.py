@@ -47,12 +47,63 @@ Visualization tools:
     2. python_function: cpu side python functions
     3. 'cuda_runtime': cpu side op that invoking cuda kernels
     4. 'kernel': cuda kernel
-    5. Others: gpu_memcpy, cpu_op, fwdbwd, gpu_memset, python_function
+    5. 'cpu_op': cpu side annotations
+    6. Others: gpu_memcpy, cpu_op, fwdbwd, gpu_memset, python_function
+
+    ########################################
+    # Example of a cuda kernel event
+    # cuda_events = [e for e in events if e['ph']=='X' and e['cat']=='kernel']
+    # pp cuda_events[0]
+    {'args': {'External id': 311878,
+            'block': [512, 1, 1],
+            'blocks per SM': 4.0,
+            'context': 1,
+            'correlation': 578471,
+            'device': 0,
+            'est. achieved occupancy %': 100,
+            'grid': [264, 2, 1],
+            'queued': 0,
+            'registers per thread': 16,
+            'shared memory': 0,
+            'stream': 7,
+            'warps per SM': 64.0},
+    'cat': 'kernel',
+    'dur': 3.36,
+    'name': 'void at::native::(anonymous '
+            'namespace)::CatArrayBatchedCopy<at::native::(anonymous '
+            'namespace)::OpaqueType<8u>, unsigned int, 1, 64, '
+            '64>(at::native::(anonymous namespace)::OpaqueType<8u>*, '
+            'at::native::(anonymous '
+            'namespace)::CatArrInputTensorMetadata<at::native::(anonymous '
+            'namespace)::OpaqueType<8u>, unsigned int, 64, 64>, '
+            'at::native::(anonymous namespace)::TensorSizeStride<unsigned int, '
+            '4u>, int, unsigned int)',
+    'ph': 'X',
+    'pid': 0,
+    'tid': 7,
+    'ts': 3777862676194.833}
+    }
+
+    ########################################
+    # Example of a python function event
+    # python_events = [e for e in events if e['ph']=='X' and e['cat']=='python_function']
+    # pp python_events[0]
+    {'args': {'Ev Idx': 321951, 'Python id': 1, 'Python parent id': None},
+    'cat': 'python_function',
+    'dur': 79383.308,
+    'name': 'beam/invokers.py(325): call_rpc',
+    'ph': 'X',
+    'pid': 36637,
+    'tid': 49121,
+    'ts': 3777853151615.0}
+    }
+
+
 6. Python side dependencies:
     1. each python_function event has a 'Python id' and 'Python parent id'
     2. though the dependency (i.e. stacktrace ordering) is based on 'ts' and
        'dur' keys
-7. CPU <> GPU connection:
+7. CPU <> GPU dependencies:
     1. Each cpu op invoking cuda kernel has a correlation id, e.g. `{'ph': 'X',
        'cat': 'cuda_runtime', 'name': 'cudaLaunchKernelExC', 'pid': 206656,
        'tid': 207287, 'ts': 1733531467127860, 'dur': 15, 'args': {'External id':
