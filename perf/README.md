@@ -7,6 +7,8 @@
 - [Bandwidth Test](#bandwidth-test)
   - [HBM to SMEM](#hbm-to-smem)
     - [Disk \<\> Host Mem](#disk--host-mem)
+- [Triton](#triton)
+- [Numbers](#numbers)
 
 
 
@@ -59,3 +61,37 @@
 ### Disk <> Host Mem
 - Mem write to disk: ~500MB/s
 - Mem read from disk: 2~5GB/s
+
+
+# Triton
+N00b 101s
+- Thread vs program instance
+  - Thread: smallest execution unit
+  - Program instance: thread block
+  - grid -> block -> thread
+- How to specify the num of threads to include in a program instance in Triton?
+  - You don't. Triton abstract away the concept of threads, but programs at block/program instance level
+- `tl.debug_barrier()`
+  - does it synchronize all the threads within a program instance, or synchronize all  program instances?
+    - Threads within a program instance are already implicitly synchronized, since SPMD execution
+    - So it sounds like this synchronize all the program instances
+    - However, triton doc says: Insert a barrier to synchronize all threads in a block.
+???
+- `tl.cumsum()`
+  - Can be magical!
+  - e.g. compute starting offset for each chunk of data, thus parallel the computation and store 
+  - e.g. when combined with `tl.where()`
+    - a list of elements, some of which satisfy some requirements while some do not
+    - the goal is to reorder the list so that satisfying elements are placed at the beginning while others at the end
+    - `locations = tl.cumsum(satisfied)`
+    - `locations = tl.where(satisfied, locations, reversed_locations)`
+- `tl.load()` & `tl.store()`
+  - Pointers don't have to be consecutive. 
+  - Precomputing a tensor as pointers can achieve purposed reordering
+
+
+# Numbers
+- On H100
+  - Dense matmul
+    - [4k, 700] @ [700, 100k] ~1ms
+    - [4k, 700] @ [700, 400k] ~4ms

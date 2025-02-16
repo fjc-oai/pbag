@@ -155,12 +155,16 @@ def peek_at_kernel_by_name(name, kernel_events, cuda_runtime_events, event_to_no
         return
     found = set()
     for kernel_event in selected_kernel_events:
-        ancestor_names = get_ancestor_names(kernel_event, cuda_runtime_events, event_to_node)
-        if ancestor_names not in found:
-            print(f"Found unique ancestor path (unique index: {len(found)}):")
-            for idx, ancestor_name in enumerate(ancestor_names):
-                print(f"    {idx}: {ancestor_name}")
-            found.add(ancestor_names)
+        try:
+            ancestor_names = get_ancestor_names(kernel_event, cuda_runtime_events, event_to_node)
+            if ancestor_names not in found:
+                print(f"Found unique ancestor path (unique index: {len(found)}):")
+                for idx, ancestor_name in enumerate(ancestor_names):
+                    print(f"    {idx}: {ancestor_name}")
+                found.add(ancestor_names)
+        except Exception as e:
+            print(f"Error processing kernel event: {e}")
+            continue
 
 
 def main():
