@@ -5,34 +5,40 @@ stack frames made cuda stream far from python functions. - Generated json files
 contain invalid characters that prevent chrome://tracing/ from loading.
 
 Usage:
-    1. Keep only the main thread (fwd, bwd, and streams), while trim other
-       threads automatically.
-    >>> python slim_trace.py /path/to/torch_profiler.json -t=auto
+    python slim_trace.py /path/to/torch_profiler.json
 
-    2. Specify specific thread ids to keep
-    >>> python slim_trace.py /path/to/torch_profiler.json -t=4019082,4019083
+Options:
+    --fix-invalid-chars: Automatically fix the invalid characters in the json
+    file.
 
-    3. Sometimes the trace is just too large. One brute force way is to trim the
-       frame depth and keep one out of n frames.
-    >>> python trim_trace.py /path/to/torch_profiler.json -t=auto -n=3
+    --trim-python-function-args: Trim the python function args. Default on.
+    Don't why those fields exist but it doesn't seem to break anything after
+    trimming. Saved a lot of space.
 
-    4. Automatically fix the invalid characters in the json file.
-    >>> python trim_trace.py /path/to/torch_profiler.json -f
+    --trim-python-function-name: Trim the python function name. Default on. Show
+    only file name, lineno, func name. Save a little.
+
+    --trim-tids: Comma separated tids to keep, or 'auto', or '' as no-op. Trim
+    irrelevant threads. Doesn't save much space but makes the trace much easier
+    to read.
+
+    --trim-frame-every-n: Trim frame and keep one out of n frames. 0 as no-op.
+    Last resort. Save significantly.
 
 Visualization tools:
-    1. chrome://tracing/ 
+    1. chrome://tracing/
     2. https://ui.perfetto.dev/ (slower to load but much smoother
     to interact with!)
 
 
 ########################################
-#   Data format of a trace file: 
+#   Data format of a trace file:
 ########################################
 
 1. A dict with dict_keys(['schemaVersion', 'deviceProperties', 'with_stack',
-   'traceEvents', 'traceName']) 
-2. 'traceEvents' is what we are interested in, a list of events 
-3. Each event is a dict 
+   'traceEvents', 'traceName'])
+2. 'traceEvents' is what we are interested in, a list of events
+3. Each event is a dict
 4. Top level categories are based on 'ph' key, e.g. 's', 'X', 'f', 'i', 'M'
     1. 's', 'f': start and finish of asynchronous flows, i.e. ac2g
     2. 'X': duration events, which are the majors ones we're interested and
@@ -51,25 +57,14 @@ Visualization tools:
     6. Others: gpu_memcpy, cpu_op, fwdbwd, gpu_memset, python_function
 
     ########################################
-    # Example of a cuda kernel event
-    # cuda_events = [e for e in events if e['ph']=='X' and e['cat']=='kernel']
-    # pp cuda_events[0]
-    {'args': {'External id': 311878,
-            'block': [512, 1, 1],
-            'blocks per SM': 4.0,
-            'context': 1,
-            'correlation': 578471,
-            'device': 0,
-            'est. achieved occupancy %': 100,
-            'grid': [264, 2, 1],
-            'queued': 0,
-            'registers per thread': 16,
-            'shared memory': 0,
-            'stream': 7,
-            'warps per SM': 64.0},
-    'cat': 'kernel',
-    'dur': 3.36,
-    'name': 'void at::native::(anonymous '
+    # Example of a cuda kernel event # cuda_events = [e for e in events if
+    e['ph']=='X' and e['cat']=='kernel'] # pp cuda_events[0] {'args': {'External
+    id': 311878,
+            'block': [512, 1, 1], 'blocks per SM': 4.0, 'context': 1,
+            'correlation': 578471, 'device': 0, 'est. achieved occupancy %':
+            100, 'grid': [264, 2, 1], 'queued': 0, 'registers per thread': 16,
+            'shared memory': 0, 'stream': 7, 'warps per SM': 64.0},
+    'cat': 'kernel', 'dur': 3.36, 'name': 'void at::native::(anonymous '
             'namespace)::CatArrayBatchedCopy<at::native::(anonymous '
             'namespace)::OpaqueType<8u>, unsigned int, 1, 64, '
             '64>(at::native::(anonymous namespace)::OpaqueType<8u>*, '
@@ -78,25 +73,14 @@ Visualization tools:
             'namespace)::OpaqueType<8u>, unsigned int, 64, 64>, '
             'at::native::(anonymous namespace)::TensorSizeStride<unsigned int, '
             '4u>, int, unsigned int)',
-    'ph': 'X',
-    'pid': 0,
-    'tid': 7,
-    'ts': 3777862676194.833}
-    }
+    'ph': 'X', 'pid': 0, 'tid': 7, 'ts': 3777862676194.833} }
 
     ########################################
-    # Example of a python function event
-    # python_events = [e for e in events if e['ph']=='X' and e['cat']=='python_function']
-    # pp python_events[0]
-    {'args': {'Ev Idx': 321951, 'Python id': 1, 'Python parent id': None},
-    'cat': 'python_function',
-    'dur': 79383.308,
-    'name': 'beam/invokers.py(325): call_rpc',
-    'ph': 'X',
-    'pid': 36637,
-    'tid': 49121,
-    'ts': 3777853151615.0}
-    }
+    # Example of a python function event # python_events = [e for e in events if
+    e['ph']=='X' and e['cat']=='python_function'] # pp python_events[0] {'args':
+    {'Ev Idx': 321951, 'Python id': 1, 'Python parent id': None}, 'cat':
+    'python_function', 'dur': 79383.308, 'name': 'beam/invokers.py(325):
+    call_rpc', 'ph': 'X', 'pid': 36637, 'tid': 49121, 'ts': 3777853151615.0} }
 
 
 6. Python side dependencies:
@@ -125,7 +109,17 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 
-def process(events: list, tids: str, frame_every_n: int) -> list:
+@dataclass
+class Args:
+    path: str
+    fix_invalid_chars: bool
+    trim_python_function_args: bool
+    trim_python_function_name: bool
+    trim_tids: str
+    trim_frame_every_n: int
+
+
+def process(events: list, args: Args) -> list:
     output_events = []
     phases = {e["ph"] for e in events}
     expected_phases = {"s", "X", "f", "i", "M"}
@@ -133,7 +127,8 @@ def process(events: list, tids: str, frame_every_n: int) -> list:
     phase_to_events = defaultdict(list)
     for event in events:
         phase_to_events[event["ph"]].append(event)
-    print("Number of events in each phase:")
+    print("*" * 100)
+    print("Number of events of each phase:")
     for phase, events in phase_to_events.items():
         print(f"    {phase=}: {len(events)}")
 
@@ -143,17 +138,58 @@ def process(events: list, tids: str, frame_every_n: int) -> list:
 
     X_events = phase_to_events["X"]
     print(f"Total number of X events: {len(X_events)}")
-    new_X_events = trim_tid_pid(X_events, tids)
-    print(f"After trimming tid_pid: {len(new_X_events)}")
 
-    new_X_events = trim_frame_every_n(new_X_events, frame_every_n)
-    print(f"After trimming frame every {frame_every_n}: {len(new_X_events)}")
+    if args.trim_python_function_args:
+        X_events = _trim_python_function_args(X_events)
 
-    output_events += new_X_events
+    if args.trim_python_function_name:
+        X_events = _trim_python_function_name(X_events)
+
+    if args.trim_tids != "":
+        X_events = _trim_tid_pid(X_events, args.trim_tids)
+
+    if args.trim_frame_every_n > 0:
+        X_events = _trim_frame_every_n(X_events, args.trim_frame_every_n)
+
+    output_events += X_events
     return output_events
 
 
-def trim_tid_pid(events: list, tids: str) -> list:
+def _trim_python_function_args(events: list) -> list:
+    print("*" * 100)
+    print(f"Trimming python function args...")
+    cnt = 0
+    for e in events:
+        if e["ph"] == "X":
+            if e["cat"] == "python_function":
+                e["args"] = {}
+                cnt += 1
+    print(f"Trimmed python function args of {cnt} events")
+    return events
+
+
+def _trim_python_function_name(events: list) -> list:
+    print("*" * 100)
+    print(f"Trimming python function name...")
+    cnt = 0
+    pattern = r"([^/]+\.py\(\d+\): \S+)"
+    for e in events:
+        if e["ph"] == "X":
+            if e["cat"] == "python_function":
+                name = e["name"]
+                match = re.search(pattern, name)
+                if match:
+                    e["name"] = match.group(1)
+                    cnt += 1
+    print(f"Trimmed python function name of {cnt} events")
+    return events
+
+
+def _trim_tid_pid(events: list, tids: str) -> list:
+    if tids == "":
+        return events
+    print("*" * 100)
+    print(f"Trimming tid_pid...")
     assert all("pid" in e and "tid" in e for e in events)
     pid_tids = {(e["pid"], e["tid"]) for e in events}
     print(f"Total number of threads: {len(pid_tids)}")
@@ -181,12 +217,15 @@ def trim_tid_pid(events: list, tids: str) -> list:
         f"    Keep {len(pid_tids_to_keep)} useful threads, trimming {len(pid_tids - pid_tids_to_keep)} trivial threads..."
     )
     new_events = [e for e in events if (e["pid"], e["tid"]) in pid_tids_to_keep]
+    print(f"Trimmed {len(events) - len(new_events)} events")
     return new_events
 
 
-def trim_frame_every_n(events: list, n: int) -> list:
+def _trim_frame_every_n(events: list, n: int) -> list:
     if n == 0:
         return events
+    print("*" * 100)
+    print(f"Trimming frame every {n}...")
     new_events = []
     pid_tids = {(e["pid"], e["tid"]) for e in events}
     for pid_tid in pid_tids:
@@ -198,6 +237,7 @@ def trim_frame_every_n(events: list, n: int) -> list:
         print(
             f"Trim frame {pid_tid}: {len(python_pid_tid_events)} -> {len(new_python_pid_tid_events)}"
         )
+    print(f"Trimmed {len(events) - len(new_events)} events")
     return new_events
 
 
@@ -254,12 +294,14 @@ def build_tree(events):
     return root_nodes
 
 
-def _load_json(path: str, fix: bool):
+def _load_json(args: Args):
+    path = args.path
     if path.startswith("~"):
         path = os.path.expanduser(path)
     if not os.path.exists(path):
         raise FileNotFoundError(f"File not found: {path}")
-    if fix:
+    if args.fix_invalid_chars:
+        print(f"Now loading {path} with invalid characters fixed...")
         with open(path, "r", encoding="utf-8", errors="ignore") as file:
             content = file.read()
         # Remove all non-ASCII characters
@@ -280,34 +322,48 @@ def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument("path", type=str)
     argparser.add_argument(
-        "-t",
-        "--tids",
+        "--fix-invalid-chars",
+        type=bool,
+        default=True,
+        help="Fix invalid characters in the json file",
+    )
+    argparser.add_argument("--trim-python-function-args", type=bool, default=True)
+    argparser.add_argument(
+        "--trim-python-function-name",
+        type=bool,
+        default=True,
+    )
+    argparser.add_argument(
+        "--trim-tids",
         type=str,
-        default="",
+        default="auto",
         help="Comma separated tids to keep, or 'auto', or '' as no-op",
     )
     argparser.add_argument(
-        "-n",
-        "--frame-every-n",
+        "--trim-frame-every-n",
         type=int,
         default=0,
         help="Trim frame and keep one out of n frames. 0 as no-op",
     )
-    argparser.add_argument("-f", "--fix", action="store_true", default=True)
     args = argparser.parse_args()
 
-    path = args.path
-    tids = args.tids
-    fix = args.fix
-    frame_every_n = args.frame_every_n
-
-    data = _load_json(path, fix)
+    args = Args(
+        path=args.path,
+        fix_invalid_chars=args.fix_invalid_chars,
+        trim_python_function_args=args.trim_python_function_args,
+        trim_python_function_name=args.trim_python_function_name,
+        trim_tids=args.trim_tids,
+        trim_frame_every_n=args.trim_frame_every_n,
+    )
+    data = _load_json(args)
     events = data["traceEvents"]
-    new_events = process(events, tids, frame_every_n)
+
+    new_events = process(events, args)
     print(f"After processing: {len(events)} -> {len(new_events)} events")
     data["traceEvents"] = new_events
 
-    output = path.replace(".json", "_processed.json")
+    output = args.path.replace(".json", "_proced.json")
+    print("*" * 100)
     print(f"Saving to {output}...")
     with open(output, "w") as f:
         json.dump(data, f, indent=None)
