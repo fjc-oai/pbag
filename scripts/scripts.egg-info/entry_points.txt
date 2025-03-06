@@ -1,0 +1,3 @@
+[console_scripts]
+parse-bt = scripts.parse_backtrace:main
+slim-trace = scripts.slim_trace:main
