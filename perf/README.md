@@ -95,3 +95,7 @@ N00b 101s
   - Dense matmul
     - [4k, 700] @ [700, 100k] ~1ms
     - [4k, 700] @ [700, 400k] ~4ms
+  
+
+# Python/C API
+- Register C/C++ code with PyEval_SetProfile()
