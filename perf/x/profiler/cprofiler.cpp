@@ -11,6 +11,7 @@ static std::vector<std::string> callStack;
 static int
 profilefunc(PyObject *obj, PyFrameObject *frame, int what, PyObject *arg)
 {
+    // return 0;
     const char *event;
     switch (what)
     {
@@ -43,6 +44,7 @@ profilefunc(PyObject *obj, PyFrameObject *frame, int what, PyObject *arg)
         }
         Py_XDECREF(name_obj);
     }
+    return 0;
 
     std::string output = "Event: " + std::string(event) + ", Function: " + std::string(func_name);
     std::cout << output << std::endl;
@@ -79,7 +81,8 @@ profilefunc(PyObject *obj, PyFrameObject *frame, int what, PyObject *arg)
 static PyObject *
 set_profile(PyObject *self, PyObject *args)
 {
-    PyEval_SetProfile(profilefunc, NULL);
+    // PyEval_SetProfile(profilefunc, NULL);
+    PyEval_SetTrace(profilefunc, NULL);
     Py_RETURN_NONE;
 }
 
@@ -87,6 +90,7 @@ set_profile(PyObject *self, PyObject *args)
 static PyObject *
 unset_profile(PyObject *self, PyObject *args)
 {
+    // PyEval_SetProfile(NULL, NULL);
     PyEval_SetProfile(NULL, NULL);
     Py_RETURN_NONE;
 }
