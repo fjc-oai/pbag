@@ -96,6 +96,31 @@ N00b 101s
     - [4k, 700] @ [700, 100k] ~1ms
     - [4k, 700] @ [700, 400k] ~4ms
   
+# Profile Python Code
+## Profilers
+1. Sampling based profiler: get stack traces at fixed time intervals, e.g.
+    - `Scalene`: register signal handler for target python process, and record stack traces when signal is triggered, by C++
+    - `py-spy`: fetches stack trace of a remote python process by virtual memory address, by rust
+2. Trace based profiler: get stack traces and frame info for each function call
+    - `yappi`: register hooks through python C API PyEval_SetProfile(), record frame and stack trace for each function call
 
-# Python/C API
-- Register C/C++ code with PyEval_SetProfile()
+## Overhead
+- `Scalene` and `py-spy`: <10% based on reported results
+- python trace based profiler: ~15x overhead
+- c++ trace based profiler: ~10x overhead
+```
+cd perf/profiler
+python setup.py build_ext --inplace
+python benchmark_profiler.py
+
+Baseline: 1.03 seconds
+Python profiler: 16.00 seconds
+{'duration:38': 1, 'task:33': 3, 'fibonacci:27': 65673000}
+C++ profiler: 11.03 seconds
+{'27:fibonacci': 65673000, '33:task': 3, '38:duration': 1}
+```
+
+## Timers
+- `time.perf_counter()`: wall time
+- `time.thread_time()`: cpu time
+- `torch.cuda.synchronize()`: the behavior seems similar to spin lock. It blocks the thread, check ready, yields the GIL to other threads before checking again.
