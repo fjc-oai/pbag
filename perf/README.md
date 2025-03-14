@@ -9,9 +9,14 @@
     - [Disk \<\> Host Mem](#disk--host-mem)
 - [Triton](#triton)
 - [Numbers](#numbers)
+- [Profile Python Code](#profile-python-code)
+  - [Profilers](#profilers)
+  - [Overhead](#overhead)
+  - [Timers](#timers)
+  - [Thread, GIL, and Python Interpreter](#thread-gil-and-python-interpreter)
 
 
-
+****
 # Nsys
 
 ## Inspect nsys profile
@@ -124,3 +129,9 @@ C++ profiler: 11.03 seconds
 - `time.perf_counter()`: wall time
 - `time.thread_time()`: cpu time
 - `torch.cuda.synchronize()`: the behavior seems similar to spin lock. It blocks the thread, check ready, yields the GIL to other threads before checking again.
+
+
+## Thread, GIL, and Python Interpreter
+- Each thread gets its own PyThreadState that holds thread-specific data (like the current execution frame and exception state). When a thread runs, it enters the common interpreter loop (implemented in CPython’s ceval.c) to execute bytecode. Although the loop’s code is the same for every thread, each thread’s loop runs with its own context.
+- Even though each thread executes the interpreter loop independently, the Global Interpreter Lock (GIL) ensures that only one thread’s loop can be executing Python bytecode at any given moment. So while conceptually each thread runs its own loop, in practice their execution is interleaved rather than truly parallel.
+- When threads call into C extensions that release the GIL, they may run concurrently at the C level. However, when they return to Python code, they again contend for the GIL and re-enter their interpreter loop.
