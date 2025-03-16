@@ -1,4 +1,4 @@
-# To build: 
+# To build:
 #   python setup.py build_ext --inplace
 import pybind11
 from setuptools import Extension, setup
@@ -7,7 +7,7 @@ from setuptools import Extension, setup
 cprofiler_module = Extension(
     "cprofiler",
     sources=["cprofiler.cpp"],
-    extra_compile_args=["-std=c++11"],
+    extra_compile_args=["-std=c++17"],
     language="c++",
 )
 
