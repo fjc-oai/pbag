@@ -7,23 +7,24 @@ contain invalid characters that prevent chrome://tracing/ from loading.
 Usage:
     python slim_trace.py /path/to/torch_profiler.json
 
-Options:
-    --fix-invalid-chars: Automatically fix the invalid characters in the json
+Options (default off for all):
+    -f, --fix-invalid-chars: Automatically fix the invalid characters in the json
     file.
 
-    --trim-python-function-args: Trim the python function args. Default on.
-    Don't why those fields exist but it doesn't seem to break anything after
-    trimming. Saved a lot of space.
+    -t, --trim-tids: Comma separated tids to keep, or 'auto', or '' as no-op.
+    Trim irrelevant threads. Doesn't save much space but makes the trace much
+    easier to read.
 
-    --trim-python-function-name: Trim the python function name. Default on. Show
-    only file name, lineno, func name. Save a little.
-
-    --trim-tids: Comma separated tids to keep, or 'auto', or '' as no-op. Trim
-    irrelevant threads. Doesn't save much space but makes the trace much easier
-    to read.
-
-    --trim-frame-every-n: Trim frame and keep one out of n frames. 0 as no-op.
+    -n, --trim-frame-every-n: Trim frame and keep one out of n frames. 0 as no-op.
     Last resort. Save significantly.
+
+    --trim-python-function-args: Trim the python function args.
+    Don't why those fields exist and it doesn't seem to break anything after
+    trimming. Should be safe to turn on. Saved a lot of space.
+
+    --trim-python-function-name: Trim the python function name. Show only file 
+    name, lineno, func name. Save a little.
+
 
 Visualization tools:
     1. chrome://tracing/
@@ -123,7 +124,9 @@ def process(events: list, args: Args) -> list:
     output_events = []
     phases = {e["ph"] for e in events}
     expected_phases = {"s", "X", "f", "i", "M"}
-    assert phases - expected_phases == set(), f"Unexpected phases: {phases - expected_phases}"
+    assert (
+        phases - expected_phases == set()
+    ), f"Unexpected phases: {phases - expected_phases}"
     phase_to_events = defaultdict(list)
     for event in events:
         phase_to_events[event["ph"]].append(event)
@@ -230,9 +233,15 @@ def _trim_frame_every_n(events: list, n: int) -> list:
     pid_tids = {(e["pid"], e["tid"]) for e in events}
     for pid_tid in pid_tids:
         pid_tid_events = [e for e in events if (e["pid"], e["tid"]) == pid_tid]
-        python_pid_tid_events = [e for e in pid_tid_events if e["cat"] == "python_function"]
-        other_pid_tid_events = [e for e in pid_tid_events if e["cat"] != "python_function"]
-        new_python_pid_tid_events = per_thread_trim_frame_every_n(python_pid_tid_events, n)
+        python_pid_tid_events = [
+            e for e in pid_tid_events if e["cat"] == "python_function"
+        ]
+        other_pid_tid_events = [
+            e for e in pid_tid_events if e["cat"] != "python_function"
+        ]
+        new_python_pid_tid_events = per_thread_trim_frame_every_n(
+            python_pid_tid_events, n
+        )
         new_events += other_pid_tid_events + new_python_pid_tid_events
         print(
             f"Trim frame {pid_tid}: {len(python_pid_tid_events)} -> {len(new_python_pid_tid_events)}"
@@ -323,24 +332,33 @@ def main():
     argparser.add_argument("path", type=str)
     argparser.add_argument(
         "--fix-invalid-chars",
+        "-f",
         type=bool,
-        default=True,
+        default=False,
         help="Fix invalid characters in the json file",
     )
-    argparser.add_argument("--trim-python-function-args", type=bool, default=True)
+    argparser.add_argument(
+        "--trim-python-function-args",
+        type=bool,
+        default=True,
+        help="Trim python function args",
+    )
     argparser.add_argument(
         "--trim-python-function-name",
         type=bool,
-        default=True,
+        default=False,
+        help="Trim python function name",
     )
     argparser.add_argument(
         "--trim-tids",
+        "-t",
         type=str,
-        default="auto",
+        default="",
         help="Comma separated tids to keep, or 'auto', or '' as no-op",
     )
     argparser.add_argument(
         "--trim-frame-every-n",
+        "-n",
         type=int,
         default=0,
         help="Trim frame and keep one out of n frames. 0 as no-op",
