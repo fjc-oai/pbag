@@ -1,6 +1,8 @@
 LICENSE
 README.md
 setup.py
+dist/scripts-0.1.0-py3-none-any.whl
+dist/scripts-0.1.0.tar.gz
 scripts/__init__.py
 scripts/mortgage.py
 scripts/parse_backtrace.py

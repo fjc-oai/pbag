@@ -25,6 +25,9 @@ Options (default off for all):
     --trim-python-function-name: Trim the python function name. Show only file 
     name, lineno, func name. Save a little.
 
+    -o, --overwrite: Overwrite the original file, instead of saving a file with
+    _proced.json suffix.
+
 
 Visualization tools:
     1. chrome://tracing/
@@ -363,6 +366,13 @@ def main():
         default=0,
         help="Trim frame and keep one out of n frames. 0 as no-op",
     )
+    argparser.add_argument(
+        "--overwrite",
+        "-o",
+        type=bool,
+        default=False,
+        help="Overwrite the original file, instead of saving a file with _proced.json suffix",
+    )
     args = argparser.parse_args()
 
     args = Args(
@@ -380,7 +390,10 @@ def main():
     print(f"After processing: {len(events)} -> {len(new_events)} events")
     data["traceEvents"] = new_events
 
-    output = args.path.replace(".json", "_proced.json")
+    if args.overwrite:
+        output = args.path
+    else:
+        output = args.path.replace(".json", "_proced.json")
     print("*" * 100)
     print(f"Saving to {output}...")
     with open(output, "w") as f:
