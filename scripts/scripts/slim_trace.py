@@ -121,6 +121,7 @@ class Args:
     trim_python_function_name: bool
     trim_tids: str
     trim_frame_every_n: int
+    overwrite: bool
 
 
 def process(events: list, args: Args) -> list:
@@ -382,6 +383,7 @@ def main():
         trim_python_function_name=args.trim_python_function_name,
         trim_tids=args.trim_tids,
         trim_frame_every_n=args.trim_frame_every_n,
+        overwrite=args.overwrite,
     )
     data = _load_json(args)
     events = data["traceEvents"]
