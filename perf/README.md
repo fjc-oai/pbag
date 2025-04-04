@@ -3,11 +3,6 @@
 - [Nsys](#nsys)
   - [Inspect nsys profile](#inspect-nsys-profile)
   - [Annotation](#annotation)
-- [CUDA Threading Model](#cuda-threading-model)
-- [Bandwidth Test](#bandwidth-test)
-  - [HBM to SMEM](#hbm-to-smem)
-    - [Disk \<\> Host Mem](#disk--host-mem)
-- [Numbers](#numbers)
 - [Profile Python Code](#profile-python-code)
   - [Profilers](#profilers)
   - [Overhead](#overhead)
@@ -15,9 +10,13 @@
   - [Thread, GIL, and Python Interpreter](#thread-gil-and-python-interpreter)
 - [Triton Basics](#triton-basics)
   - [Threading Model](#threading-model)
+  - [Layout Basics](#layout-basics)
   - [Somewhat-good-Practice](#somewhat-good-practice)
+  - [Tiling strategy](#tiling-strategy)
   - [Torch profiler annotation](#torch-profiler-annotation)
   - [Triton syntax](#triton-syntax)
+- [Numbers](#numbers)
+  - [Bandwidth Test](#bandwidth-test)
 
 
 ****
@@ -44,41 +43,8 @@
 
 - If using triton, kernel names are the exact triton function name
 
-
-# CUDA Threading Model
-
-- A block is a group of threads, a grip is a group of blocks. Triton abstracts away threads whereas developers can focus on block level programming. A small num of block in profile usually is not a good sign.
-- Need more investigation
-    - [ ] Threads within a block share some memory. What does it mean?
-    - [ ] What're the properties for thread/block within a grid?
-    - [ ] How are those related to warp and SM? 
-    - [ ] How does the num of blocks affect computation parallelism and also memory bandwidth?
-    - [ ] How does Triton translate a block level function into thread level logics?
-    - [ ] etc
   
 
-# Bandwidth Test
-
-## HBM to SMEM
-- Spec value: A100 is 1.6TB/s, H100 is 3.0TB/s
-- Test value: A100 ~1TB, H100 ~1.3TB/s
-  - `python perf/bandwidth_test/hbm_2_smem.py --auto`
-- Need more investigation
-  - [ ] How to correctly reducing the impact of cache in test bandwidth 
-  - [ ] How does numk of kernel block/grid affecting mem bandwidth? More parallelism, or more contention?
-  
-### Disk <> Host Mem
-- Mem write to disk: ~500MB/s
-- Mem read from disk: 2~5GB/s
-
-# Numbers
-- On H100
-  - Dense matmul
-    - [4k, 700] @ [700, 100k] ~1ms
-    - [4k, 700] @ [700, 400k] ~4ms
-  - Element-wise kernel
-    - H100 memory bandwidth is 3TB
-    - [4M, 480] (~8GB data read and then write) ~8ms. Theoritical latency is 8/3000*2~=5ms
   
 # Profile Python Code
 ## Profilers
@@ -136,6 +102,18 @@ TODO
   - `Block`: a group of warps that can share on-chip memory, and synchronize using barriers.
     - Blocks are scheduled and executed independently and in parallel
   - `Grid`: a group of blocks, running co
+
+## Layout Basics
+- a 2D data is usually shaped as `(M, N)`
+- `BLOCK_SIZE` / `BLOCK_M` / `BLOCK_N`: 
+  - number of data/rows/columns will be processed by a single program instance (i.e. block). Essentially controls tile size per instance
+- `N_BLOCKS` / `M_BLOCKS` / `N_BLOCKS`: 
+  - number of program instances launched along M and N dims. It determines the level of parallelism (Note that, each program instance itself runs multiple warps/threads in parallel as well).
+- `grid`: 
+  - usually equals to `(M_BLOCKS, N_BLOCKS)`
+- `num_warps`: 
+  - number of hardware warps per program instance. It determines the parallelism within a program instance.
+  
 
 ## Somewhat-good-Practice
 1. 2D grid doesn't neccessarily better perform 1D grid
@@ -235,6 +213,21 @@ TODO
 ################################################################################
 ```
 
+## Tiling strategy
+<img src='images/tile.png' width=300>
+
+1. Bottomline is, every single tile should be covered by one program instance
+2. Fixed program instance: 
+   - Each program instance (block) covers a fixed amount of work
+   - The total num of program instance (block) varies
+3. Fixed N_BLOCKS:
+   - The total num of program instance (block) is fixed
+   - Each program instance will process one or multiple tiles 
+4. Comparison
+   - Fixed program instance seems easier to implement. Each of which only need to deal with one tile. The num of program instance can be easily specified through grid (e.g. `[cdiv(M, BLOCK_M), cdiv(N, BLOCK_N)]`)
+   - One drawback of fixed program instance is that, it might result into a huge number of program instances (blocks). It may potentially cause extra scheduling overhead just like excessively num of threads in OS? don't really know.
+   - So far it seems not much difference between those two approaches. Might be wrong though due to very limited experience
+
 ## Torch profiler annotation
 - Each launched kernel in torch profiler has metadata including grid and block.
 - `grid	[2097152, 1, 1]`: 1D grid is used, with in total 2097152 program instances (blocks)
@@ -276,3 +269,21 @@ for off in range(0, N, BLOCK_N):
 - `tl.load()` & `tl.store()`
   - Pointers don't have to be consecutive. 
   - Precomputing a tensor as pointers can achieve purposed reordering
+  
+# Numbers
+
+## Bandwidth Test
+1. HBM to SMEM
+   - `python hbm_2_smem.py` 
+   - H100: tested value: `2597GB/s`, reported value: `3TB/s`
+2. Disk <> Host Mem
+   1. Mem write to disk: `~500MB/s`
+   2. Mem read from disk: `2~5GB/s`
+
+- On H100
+  - Dense matmul
+    - [4k, 700] @ [700, 100k] ~1ms
+    - [4k, 700] @ [700, 400k] ~4ms
+  - Element-wise kernel
+    - H100 memory bandwidth is 3TB
+    - [4M, 480] (~8GB data read and then write) 8ms. Theoritical latency is 8/3000*2~=5ms
