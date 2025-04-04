@@ -7,13 +7,14 @@
 - [Bandwidth Test](#bandwidth-test)
   - [HBM to SMEM](#hbm-to-smem)
     - [Disk \<\> Host Mem](#disk--host-mem)
-- [Triton](#triton)
 - [Numbers](#numbers)
 - [Profile Python Code](#profile-python-code)
   - [Profilers](#profilers)
   - [Overhead](#overhead)
   - [Timers](#timers)
   - [Thread, GIL, and Python Interpreter](#thread-gil-and-python-interpreter)
+- [Triton Basics](#triton-basics)
+  - [Threading Model](#threading-model)
   - [Somewhat-good-Practice](#somewhat-good-practice)
   - [Torch profiler annotation](#torch-profiler-annotation)
   - [Triton syntax](#triton-syntax)
@@ -70,39 +71,14 @@
 - Mem write to disk: ~500MB/s
 - Mem read from disk: 2~5GB/s
 
-
-# Triton
-N00b 101s
-- Thread vs program instance
-  - Thread: smallest execution unit
-  - Program instance: thread block
-  - grid -> block -> thread
-- How to specify the num of threads to include in a program instance in Triton?
-  - You don't. Triton abstract away the concept of threads, but programs at block/program instance level
-- `tl.debug_barrier()`
-  - does it synchronize all the threads within a program instance, or synchronize all  program instances?
-    - Threads within a program instance are already implicitly synchronized, since SPMD execution
-    - So it sounds like this synchronize all the program instances
-    - However, triton doc says: Insert a barrier to synchronize all threads in a block.
-???
-- `tl.cumsum()`
-  - Can be magical!
-  - e.g. compute starting offset for each chunk of data, thus parallel the computation and store 
-  - e.g. when combined with `tl.where()`
-    - a list of elements, some of which satisfy some requirements while some do not
-    - the goal is to reorder the list so that satisfying elements are placed at the beginning while others at the end
-    - `locations = tl.cumsum(satisfied)`
-    - `locations = tl.where(satisfied, locations, reversed_locations)`
-- `tl.load()` & `tl.store()`
-  - Pointers don't have to be consecutive. 
-  - Precomputing a tensor as pointers can achieve purposed reordering
-
-
 # Numbers
 - On H100
   - Dense matmul
     - [4k, 700] @ [700, 100k] ~1ms
     - [4k, 700] @ [700, 400k] ~4ms
+  - Element-wise kernel
+    - H100 memory bandwidth is 3TB
+    - [4M, 480] (~8GB data read and then write) ~8ms. Theoritical latency is 8/3000*2~=5ms
   
 # Profile Python Code
 ## Profilers
@@ -150,6 +126,16 @@ TODO
 [ ] easy way to register for all threads on python 3.11
 
 
+# Triton Basics
+## Threading Model
+(by ChatGPT)
+- Cuda
+  - `Thread`: the smallest unit of execution.
+  - `Warp`: a group of 32 threads that execute instructions in SIMP fashion.
+    - Warps enable efficient parallel execution within a block
+  - `Block`: a group of warps that can share on-chip memory, and synchronize using barriers.
+    - Blocks are scheduled and executed independently and in parallel
+  - `Grid`: a group of blocks, running co
 
 ## Somewhat-good-Practice
 1. 2D grid doesn't neccessarily better perform 1D grid
