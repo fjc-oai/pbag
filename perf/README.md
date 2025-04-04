@@ -14,6 +14,9 @@
   - [Overhead](#overhead)
   - [Timers](#timers)
   - [Thread, GIL, and Python Interpreter](#thread-gil-and-python-interpreter)
+  - [Somewhat-good-Practice](#somewhat-good-practice)
+  - [Torch profiler annotation](#torch-profiler-annotation)
+  - [Triton syntax](#triton-syntax)
 
 
 ****
@@ -148,33 +151,6 @@ TODO
 
 
 
-# Triton Basics
-## Threading Model
-(by ChatGPT)
-- Cuda
-  - `Thread`: the smallest unit of execution.
-  - `Warp`: a group of 32 threads that execute instructions in SIMP fashion.
-    - Warps enable efficient parallel execution within a block
-  - `Block`: a group of warps that can share on-chip memory, and synchronize using barriers.
-    - Blocks are scheduled and executed independently and in parallel
-  - `Grid`: a group of blocks, running concurrently across multiple SMs
-    - The kernel is launched over a grid.
-    - Threads across blocks cannot synchronize and only communicate via global memory
-- Triton
-  - `Program instance`: the fundamental unit of execution and the smallest programming unit
-    - Triton abstracts away explicit threads
-    - Equavallent to Cuda's block
-    - Each program instance behaves like a virtual thread block, running vectorized operations using index-based programming, e.g. tl.arange(), tl.load(), etc
-  - `Grid`: a collection of program instances.
-
-## Layout Basics
-- 2D data is usually shaped as (M, N)
-- `BLOCK_SIZE` / `BLOCK_M` / `BLOCK_N`: number of data/rows/columns will be processed by a single program instance (i.e. block). Essentially controls tile size per instance
-- `N_BLOCKS` / `M_BLOCKS` / `N_BLOCKS`: number of program instances launched along M and N dims. It determines the level of parallelism (Note that, each program instance itself runs multiple warps/threads in parallel as well).
-- `grid`: usually equals to `(M_BLOCKS, N_BLOCKS)`
-- `num_warps`: number of hardware warps per program instance. It determines the parallelism within a program instance.
-
-
 ## Somewhat-good-Practice
 1. 2D grid doesn't neccessarily better perform 1D grid
 ```
@@ -302,3 +278,15 @@ for off in range(0, N, BLOCK_N):
 
 - `do_not_specialize`
   - Prevents the Triton compiler from generating specialized kernel variants for specific arguments.
+
+- `tl.cumsum()`
+  - Can be magical!
+  - e.g. compute starting offset for each chunk of data, thus parallel the computation and store 
+  - e.g. when combined with `tl.where()`
+    - a list of elements, some of which satisfy some requirements while some do not
+    - the goal is to reorder the list so that satisfying elements are placed at the beginning while others at the end
+    - `locations = tl.cumsum(satisfied)`
+    - `locations = tl.where(satisfied, locations, reversed_locations)`
+- `tl.load()` & `tl.store()`
+  - Pointers don't have to be consecutive. 
+  - Precomputing a tensor as pointers can achieve purposed reordering
