@@ -1,0 +1,58 @@
+# Conv2d
+- Torch spec: https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
+- A good visualization: https://medium.com/data-science/conv2d-to-finally-understand-what-happens-in-the-forward-pass-1bbaafb0b148
+- Basics
+  - Input shape: `(N, C_in, H, W)`
+  - Output shape: `(N, C_out, H, W)`
+  - Kernel/weight shape: `(C_out, C_in, H_k, W_k)`
+  - Flops: `N * H * W * H_k * W_k * C_in * C_out`
+  - Dilation: increase receptive field without increasing num of params/flops
+  - Stride: reduce spatial dimension
+- Depthwise Separable Conv2d
+  - A good visualization: https://www.youtube.com/watch?v=vVaRhZXovbw 
+  - Apply single 2d filter per input channel, to capture spatial pattern within each channel
+  - Apply another 1x1 conv across channels to learn cross channel interactions
+  - Intention is to reduce compute complexity with minimal accuracy loss
+  - In practice this may or may not run faster on modern GPUs given faster compute speed over mem bandwidth
+
+# CNN model arch
+- Commonly, (Conv2d + Norm + Act + Pooling) * N + MLP
+  - Norm can be either BatchNorm (anchient) or LayerNorm
+  - Activation includes ReLU, GeLU, etc
+  - Pooling can be either min/max/attention pooling
+- <img src='images/cnn_model_arc.png' width=300>
+- Along with going deeper into the layer, gradually increase channel dim while reduce spatial dim. The intention is to extract spatial info into dense vector
+- Spatial dimension reduction is achieved through stride and pooling
+
+# Evolvement
+1. A nice survey paper: A Comprehensive Survey of Convolutions in Deep Learning: Applications, Challenges, and Future Trends
+2. AlexNet
+   1. contribution, 1) largest CNN model, 2) optimized cuda implementation, 3) new arch
+   2. ReLU: faster to converge comparing with non-saturating nonlinearity (e.g. tanh)
+   3. CNN: gradually increasing channel dimension while reducing spatial dimension
+3. InceptionNet
+   1. introduced convolutional blocks, each of which includes multiple filter sizes to capture features at various scales
+   2. improve both accuracy and computational efficiency
+4. ResNet
+   1. with depth further increasing, empirical results show not similar but even worse results than shallower models
+   2. residual mapping likely makes the solver easier to learn identity or close to identity mapping
+5. MobileNet
+   1. depthwise separable convs, width and resolution multiplier 
+   2. significant compute efficiency improvement, with small accuracy loss
+6. EfficientNets
+   1. more systematically thinking about balancing accuracy and cost through conv params
+7. FaceNet
+   1. e2e train a face embedding by carefully design loss function and triplet batch data
+
+# Normalization
+- Stablize training
+- BatchNorm was versatile among AlexNet, ResNet, etc
+- LayerNorm was invented afterward as a better alternative
+
+# Conv2d Implementation
+- As of today, cuDNN is likely the most efficient implementation
+  - Note that, pytorch underlyingly run cuDNN's kernel, but the conv and bias are separate ones. It could be 2x slowdown if using bias, which is mem bandwidth bound
+- The only opensource version of triton implementation is from torch inductor
+  - https://github.com/pytorch/pytorch/blob/main/torch/_inductor/kernel/conv.py 
+  - 2~3X slower than cuDNN, mainly due to Triton compiler's focus on transformer models
+
