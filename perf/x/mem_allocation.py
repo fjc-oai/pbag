@@ -2,7 +2,7 @@ import torch
 import tracemalloc
 
 
-def test():
+def test_tracemalloc():
     t1 = torch.randn(128, 1024, 1024)
     t2 = torch.randn(128, 1024, 1024, device="cuda")
 
@@ -31,4 +31,22 @@ def test():
         print(record)
 
 
-test()
+
+def test_lazy_allocation():
+    import time
+    import numpy
+    import os
+
+    print(f"pid: {os.getpid()}")
+    for i in range(20):
+        print(f"sleeping {i}")
+        time.sleep(1)
+    print("creating a big array")
+    big_array = numpy.empty(1_000_000_000)
+    time.sleep(5)
+    print("writing to the big array")
+    big_array[:] = 42.0
+    time.sleep(5)
+
+
+test_lazy_allocation()
