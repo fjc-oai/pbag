@@ -19,6 +19,7 @@
   - [Data structure](#data-structure)
   - [tensor.detach()](#tensordetach)
   - [Visualization](#visualization)
+  - [Autograd `backward()` output semantics](#autograd-backward-output-semantics)
 - [CUDA Memory Usage](#cuda-memory-usage)
   - [Forward only](#forward-only)
   - [Foward backward](#foward-backward)
@@ -224,6 +225,31 @@ After running forward pass, autograd engine builds the computation graph by
 ## Visualization
 - Run `python tiny_checkpoint.py` with `ENABLE_COMPUTATION_GRAPH_VIZ_DOT=True` to inspect the computation graph.
 - <img src='images/computation_graph.png' width='500'>
+
+## Autograd `backward()` output semantics
+- `python x/autograd_fn.py`
+- Autograd engine uses return values from backward() function to assign grad to input tensors
+When you implement a custom `torch.autograd.Function`, the tensors you return from `backward()` can be handled three different ways:
+
+1. Fresh tensors created inside `backward()`  
+   - `.grad` was `None`  
+   - PyTorch assigns your new tensor directly as `.grad` (no copy but create a new tensor object) 
+   - storage pointer matches your returned tensor  
+
+2. Tensors created before or outside `backward()`  
+   - `.grad` was `None`  
+   - PyTorch allocates its own buffer and copies your values in (`.copy_()`)  
+
+3. `.grad` buffer already exists on the tensor  
+   - PyTorch performs an in‑place add (`+=`) into the existing `.grad`  
+
+4. Input with `requires_grad=False`  
+   - no gradient is tracked or applied  
+   - `.grad` remains `None` for that input  
+
+5. Graph propagation and hooks  
+   - If an input has a computation history, the output tensor will be directly passed down to the backward computation of that computation graph
+   - The behavior can be monitored by `register_hook()`
 
 
 # CUDA Memory Usage
