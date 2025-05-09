@@ -19,7 +19,7 @@
   - [Data structure](#data-structure)
   - [tensor.detach()](#tensordetach)
   - [Visualization](#visualization)
-  - [Autograd `backward()` output semantics](#autograd-backward-output-semantics)
+  - [Autograd function output semantics](#autograd-function-output-semantics)
 - [CUDA Memory Usage](#cuda-memory-usage)
   - [Forward only](#forward-only)
   - [Foward backward](#foward-backward)
@@ -226,7 +226,7 @@ After running forward pass, autograd engine builds the computation graph by
 - Run `python tiny_checkpoint.py` with `ENABLE_COMPUTATION_GRAPH_VIZ_DOT=True` to inspect the computation graph.
 - <img src='images/computation_graph.png' width='500'>
 
-## Autograd `backward()` output semantics
+## Autograd function output semantics
 - `python x/autograd_fn.py`
 - Autograd engine uses return values from backward() function to assign grad to input tensors
 When you implement a custom `torch.autograd.Function`, the tensors you return from `backward()` can be handled three different ways:
