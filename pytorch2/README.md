@@ -24,6 +24,14 @@
   - [Forward only](#forward-only)
   - [Foward backward](#foward-backward)
   - [Forward backward with activation checkpointing](#forward-backward-with-activation-checkpointing)
+- [Optimizer](#optimizer)
+  - [Concepts](#concepts-1)
+  - [Writing a custom optimizer](#writing-a-custom-optimizer)
+  - [Common optimizers](#common-optimizers)
+    - [SGD](#sgd)
+    - [Adam](#adam)
+    - [Shampoo](#shampoo)
+    - [Toy implementation](#toy-implementation-2)
 
 # CUDA Memory Management
 
@@ -296,3 +304,60 @@ When you implement a custom `torch.autograd.Function`, the tensors you return fr
 4. OPEN QUESTION: why those pointy spikes???
 
 <img src='images/fwd_bwd_ac.png' width='300'>
+
+
+# Optimizer
+
+## Concepts
+1. Optimizer updates model parameters using gradients computed during backward pass.
+2. `step()` applies the update rule; `zero_grad()` clears previous gradients.
+3. Each optimizer stores parameter-specific state in `self.state[p]`. This allows tracking stats like momentum or RMS and enables checkpointing/resumption.
+
+## Writing a custom optimizer
+
+1. Inherit from `torch.optim.Optimizer`
+2. Set hyperparameters via `defaults` when calling `super().__init__()`:
+   ```python
+   super().__init__(params, defaults=dict(lr=lr, betas=(0.9, 0.999), eps=1e-8))
+   ```
+3. `self.param_groups` is a list of dictionaries, each representing a group of parameters with associated hyperparameters:
+   - Each group must include `"params"`, a list of tensors.
+   - Other entries (e.g. `"lr"`, `"betas"`) override `defaults` for that group.
+4. You can override defaults when constructing the optimizer, for example:
+   ```python
+   optimizer = torch.optim.Adam([
+       {"params": model.base.parameters(), "lr": 1e-3},
+       {"params": model.head.parameters(), "lr": 1e-2, "betas": (0.95, 0.999)}
+   ], lr=1e-4)  # default lr=1e-4 unless overridden
+   ```
+5. In your `step()` function:
+   - Iterate over `self.param_groups`, then over `group["params"]`.
+   - Access hyperparameters via `group["lr"]`, `group["betas"]`, etc.
+   - Store per-parameter state in `self.state[p]`, e.g.:
+     ```python
+     state = self.state[p]
+     if "m" not in state:
+         state["m"] = torch.zeros_like(p.data)
+     ```
+
+## Common optimizers
+
+### SGD
+- Update rule: `p -= lr * grad`
+- No state tracking
+
+### Adam
+- Tracks moving averages: `m` (grad), `v` (grad^2)
+- Uses bias-corrected estimates `m_hat`, `v_hat`
+- Update: `p -= lr * m_hat / (sqrt(v_hat) + eps)`
+
+### Shampoo
+- Matrix preconditioning per dim using second-moment statistics
+- Slower but better for high-dim tensors (e.g. MLP weights)
+- Update involves multiplying grad by matrix inverse
+- Still don't really understand
+
+### Toy implementation
+```
+$ python tiny_optimizer.py
+```
