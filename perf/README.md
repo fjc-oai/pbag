@@ -1,8 +1,9 @@
 # Table of Content
 - [Table of Content](#table-of-content)
 - [Nsys](#nsys)
-  - [Inspect nsys profile](#inspect-nsys-profile)
-  - [Annotation](#annotation)
+  - [Data Model](#data-model)
+  - [NVTX Annotation](#nvtx-annotation)
+  - [Inspect Nsys profile](#inspect-nsys-profile)
 - [Profile Python Code](#profile-python-code)
   - [Profilers](#profilers)
   - [Overhead](#overhead)
@@ -22,26 +23,51 @@
 ****
 # Nsys
 
-## Inspect nsys profile
-- To find a particular kernel, e.g. add2_bwd, 
-  1. select cuda all streams, 
-  2. click show in event view , 
-  3. search for add2_bwd
-  4. (can search either a kernel or block annotation)
-- Nsys offers pretty handy event view in nested tree format!
-- For a kernel, grid info could be useful
+## Data Model
+- Each event is a timespan, with start, end and duration
+  - NVTX event: tags from user's python code annotated by nvtx, e.g. `torch.cuda.nvtx.range_push("l1")`
+  - Cuda event: cuda kernels
+  - Other event: specified by `-t`, e.g. `futex` from OS runtime, `Call to cudaEventRecord` from Cuda API, etc
+- Events are categorized by
+  - CPU threads
+    - fwd thread, bwd thread, etc
+    - Each thread is further breakdown by NVTX, NCCL, CUDA API, OS runtime, etc
+  - All streams
+    - Compute stream, comm stream, mem stream, etc
+    - Each stream is further breakdown by NVTX, kernel, memory, etc
+      - Kernel is further breakdown by type, e.g. matmul, all_reduce, etc
+      - Similarly to memory, e.g. memset, h2d, d2h, etc
 
+## NVTX Annotation
+- `nvtx.range_push()` inserts a special event to cuda stream to mark the beginning of a range. `nvtx.range_pop()` inserts another special event to cuda stream to mark the end of a range. 
 
-## Annotation
-- nvtx.range_push() inserts a special event to cuda stream to mark the beginning of a range. nvtx.range_pop() inserts another special event to cuda stream to mark the end of a range. 
-
-  - In nsys cuda stream view, the start time is the first kernel start time. The end time is the last kernel end time. Any python side duration (e.g. time.sleep()) is omitted. 
-
+- Each annotation creates events on both CPU threads and GPU streams
+- One annotation creates one event on Cpu thread
+  - Only created for the current Cpu thread
+  - Event start time, end time and duration match with Cpu code execution time. For example, a `time.sleep()` will be reflected 
+- One annotation creates multiple events, each for one Cuda stream
+  - In nsys cuda stream view, the start time is the immediate next kernel start time. The end time is the last kernel end time. 
+  - Any python side duration (e.g. `time.sleep()`) will be omitted. 
   - For multiple streams, nvtx.range_push() and nvtx.range_pop() insert events to each stream independently. The duration and annotation in nsys is also generated independently for each stream.
-
-  - Checkout `nvtx.py`
+- Checkout examples in `nvtx.py`
 
 - If using triton, kernel names are the exact triton function name
+
+## Inspect Nsys profile
+- First figure out which row to look at. GPU stream, which stream? CPU thread, which thread?
+- For a GPU stream, wanted to check kernels or NVTX annotations?
+- Events view is very handy. It's time ordered, and shows nested tree structure
+  - Check events view by right click the row. 
+  - Right click on the stream to show all events, or right click NVTX to show all the NVTX events
+- To find a particular kernel, e.g. add2_bwd, 
+  1. select cuda all streams 
+  2. click show in event view
+  3. search for add2_bwd
+  4. right click the event and click zoom to selected event
+- Look at timeline view to check durations and bubbles
+
+<img src='images/nsys.png' width=500>
+
 
   
 
