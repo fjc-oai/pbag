@@ -16,6 +16,10 @@
   - [Tiling strategy](#tiling-strategy)
   - [Torch profiler annotation](#torch-profiler-annotation)
   - [Triton syntax](#triton-syntax)
+- [Overlap Compute Streams](#overlap-compute-streams)
+  - [Experiment Results](#experiment-results)
+  - [CUDA execution hierarcy](#cuda-execution-hierarcy)
+  - [Observibility](#observibility)
 - [Numbers](#numbers)
   - [Bandwidth Test](#bandwidth-test)
 
@@ -296,6 +300,56 @@ for off in range(0, N, BLOCK_N):
   - Pointers don't have to be consecutive. 
   - Precomputing a tensor as pointers can achieve purposed reordering
   
+# Overlap Compute Streams
+1. Does overlapping compute streams improve performance?
+2. How does warp scheduling work?
+3. How to measure SM utilizations?
+
+## Experiment Results
+`python benchmarks/benchmark_overlap_compute_streams.py`
+- Matmul/Add (saturated kernels)
+  - Overlapping streams yields similar performance to a single stream
+- Sleep kernel (non-saturating)
+  - Overlapping improves tput via concurrent executions
+
+**matmul**
+
+<img src='images/matmul.png' width=300>
+
+**add**
+
+<img src='images/add.png' width=300>
+
+**sleep**
+
+<img src='images/sleep.png' width=300>
+
+
+## CUDA execution hierarcy
+Hardware perspective
+- Warp: 32 threads, minimal execution unit (SIMT)
+- SM
+   - Hardware unit that executes warp
+   - Each SM has warp schedulers, 2~4 per SM
+   - Each warp scheduler issues instructions for one warp per cycle.
+   - SM executes warps in interleaved fashion to hide memory latency.
+- Block: goup of threads, decomposed into warps
+- Grid: entire kernel launch
+
+Software perspective
+- Kernels in the same stream run sequentially
+- Kernels in different streams may run concurrently, if resource constraints (e.g. SMs) allow
+- The scheduler interleave kernels from different streams in a round-robin fashion, regardless of enqueue order
+
+## Observibility
+- `torch.cuda.Event.record()` is per stream (i.e. current stream)! Sync streams to allow multi-stream program latency measurement.
+- Use `nsys profile --gpu-metrics-devices=all ...` to observe hardware metrics
+  - `SM instructions` seems to be a good metrics for SM utiliztaion, where matmul is ~90%, add is ~10% and sleep is ~1%.
+  - This also shows interesting metrics, e.g. DRAM bandwidth, NVLINK bandwidth, PCIe bandwidth, etc
+
+<img src='images/nsys.png' width=300>
+
+
 # Numbers
 
 ## Bandwidth Test
