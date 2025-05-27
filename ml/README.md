@@ -1,4 +1,16 @@
-# Conv2d
+- [CNN](#cnn)
+  - [Conv2d](#conv2d)
+  - [CNN model arch](#cnn-model-arch)
+  - [Evolvement](#evolvement)
+  - [Normalization](#normalization)
+  - [Conv2d Implementation](#conv2d-implementation)
+- [AutoEncoder](#autoencoder)
+  - [AutoEncoder](#autoencoder-1)
+  - [TODO](#todo)
+
+# CNN
+
+## Conv2d
 - Torch spec: https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
 - A good visualization: https://medium.com/data-science/conv2d-to-finally-understand-what-happens-in-the-forward-pass-1bbaafb0b148
 - Basics
@@ -15,7 +27,7 @@
   - Intention is to reduce compute complexity with minimal accuracy loss
   - In practice this may or may not run faster on modern GPUs given faster compute speed over mem bandwidth
 
-# CNN model arch
+## CNN model arch
 - Commonly, (Conv2d + Norm + Act + Pooling) * N + MLP
   - Norm can be either BatchNorm (anchient) or LayerNorm
   - Activation includes ReLU, GeLU, etc
@@ -24,7 +36,7 @@
 - Along with going deeper into the layer, gradually increase channel dim while reduce spatial dim. The intention is to extract spatial info into dense vector
 - Spatial dimension reduction is achieved through stride and pooling
 
-# Evolvement
+## Evolvement
 1. A nice survey paper: A Comprehensive Survey of Convolutions in Deep Learning: Applications, Challenges, and Future Trends
 2. AlexNet
    1. contribution, 1) largest CNN model, 2) optimized cuda implementation, 3) new arch
@@ -44,15 +56,37 @@
 7. FaceNet
    1. e2e train a face embedding by carefully design loss function and triplet batch data
 
-# Normalization
+## Normalization
 - Stablize training
 - BatchNorm was versatile among AlexNet, ResNet, etc
 - LayerNorm was invented afterward as a better alternative
 
-# Conv2d Implementation
+## Conv2d Implementation
 - As of today, cuDNN is likely the most efficient implementation
   - Note that, pytorch underlyingly run cuDNN's kernel, but the conv and bias are separate ones. It could be 2x slowdown if using bias, which is mem bandwidth bound
 - The only opensource version of triton implementation is from torch inductor
   - https://github.com/pytorch/pytorch/blob/main/torch/_inductor/kernel/conv.py 
   - 2~3X slower than cuDNN, mainly due to Triton compiler's focus on transformer models
 
+# AutoEncoder
+Confusing math terms in loss function!
+- `Distribution`: how likely each possible value of something is.
+
+- `Sample`: select a value based on a distribution.
+
+- `p(z | x)`: a conditional distribution. It describes the probability of each possible value of `z`, given a specific input `x`. The vertical bar `|` means “given.”
+
+- `z ∼ p(z | x)`: means “`z` is sampled from the distribution `p(z | x)`.” In other words, `z` is chosen based on the probabilities defined by `p(z | x)`.
+
+- `KL(P ‖ Q)`: the Kullback–Leibler divergence. A number that measures how different distribution `P` is from distribution `Q`. It is zero if the two are the same, and grows larger as they differ more.
+
+- `E[...]`: stands for “expectation.” Computed as the sum of value weighted by the probability.
+
+## AutoEncoder
+- Train `python autoencoder/train.py`
+- Eval `python autoencoder/eval.py`
+
+## TODO
+- Implement Variational Autoencoder
+- Read difussional model
+- Read stable difussion
