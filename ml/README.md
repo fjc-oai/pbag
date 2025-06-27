@@ -7,6 +7,7 @@
 - [AutoEncoder](#autoencoder)
   - [AutoEncoder](#autoencoder-1)
   - [TODO](#todo)
+- [Adam](#adam)
 
 # CNN
 
@@ -90,3 +91,18 @@ Confusing math terms in loss function!
 - Implement Variational Autoencoder
 - Read difussional model
 - Read stable difussion
+
+
+# Adam
+- first momentum
+  - `m`: mean
+  - `exp_avg`: exponential average `m = β₁ × m + (1 − β₁) × g`
+  - If gradients point in a consistent direction, `m` accumulates.
+- second momentum
+    - `v`: variance
+    - `exp_avg_sq`: exponential moving average of the square `v = β₂ × v + (1 − β₂) × g²`
+      - It shows how “bouncy” or unstable the gradients are.
+- update
+    - `new_p = p − lr × m / √v`
+    - `m` indicates direction: a larger `m` means a bigger step.
+    - `v` measures noise: a larger `v` means a smaller step.
