@@ -8,6 +8,7 @@
   - [AutoEncoder](#autoencoder-1)
   - [TODO](#todo)
 - [Adam](#adam)
+- [Weight Decay](#weight-decay)
 
 # CNN
 
@@ -106,3 +107,16 @@ Confusing math terms in loss function!
     - `new_p = p − lr × m / √v`
     - `m` indicates direction: a larger `m` means a bigger step.
     - `v` measures noise: a larger `v` means a smaller step.
+
+
+# Weight Decay
+- Weight decay is a regularization technique that prevents overfitting by shrinking the weights toward zero during training.
+  - w ← w − lr × λ × w
+- What does regularization mean?
+  - In math, it means adding a constraint or penalty to an optimization problem to make it well-behaved—or “regular.”
+  - Regularization adds a penalty to the loss that discourages bad solutions, like overfitting.
+    - Loss = MSE(y, ŷ) + λ × ||w||²
+- Why does regularization help prevent overfitting?
+  - Smaller weights = simpler functions = less overfitting
+  - When weights are large, even a small change in input can cause a huge change in output.
+  - This leads to a model that memorizes training data but fails on unseen data.
