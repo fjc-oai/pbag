@@ -1,4 +1,4 @@
-// cc -O2 -Wall rc_two_qp_min.c -libverbs -o rc_two_qp_min && ./rc_two_qp_min
+// cc -O2 -Wall qp_single_host.c -libverbs -o qp_single_host && ./qp_single_host
 #include <infiniband/verbs.h>
 #include <arpa/inet.h>
 #include <errno.h>
