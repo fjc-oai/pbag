@@ -1,3 +1,16 @@
+- [Lab A — single-process, two-QP RC ping-pong (no sockets!)](#lab-a--single-process-two-qp-rc-ping-pong-no-sockets)
+  - [major concepts](#major-concepts)
+  - [lifecycle](#lifecycle)
+  - [3 apis](#3-apis)
+- [Lab B — cross-host RC using the reference sample](#lab-b--cross-host-rc-using-the-reference-sample)
+- [Lab C — QP Across Hosts (qp\_across\_hosts.c)](#lab-c--qp-across-hosts-qp_across_hostsc)
+  - [1) Buffer registration (MR) — what and why](#1-buffer-registration-mr--what-and-why)
+  - [2) How peers find each other and exchange info](#2-how-peers-find-each-other-and-exchange-info)
+  - [3) Moving the QP: INIT → RTR → RTS (where the peer info is used)](#3-moving-the-qp-init--rtr--rts-where-the-peer-info-is-used)
+  - [4) Posting work \& polling completions](#4-posting-work--polling-completions)
+  - [Quick checklist (both hosts)](#quick-checklist-both-hosts)
+- [Lab D - QP Across Hosts on GPU Memory](#lab-d---qp-across-hosts-on-gpu-memory)
+
 # Lab A — single-process, two-QP RC ping-pong (no sockets!)
 ```
 cc -O2 -Wall qp_single_host.c -libverbs -o qp_single_host && ./qp_single_host
