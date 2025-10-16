@@ -10,7 +10,7 @@
   - [4) Posting work \& polling completions](#4-posting-work--polling-completions)
   - [Quick checklist (both hosts)](#quick-checklist-both-hosts)
 - [Lab D - QP Across Hosts on GPU Memory](#lab-d---qp-across-hosts-on-gpu-memory)
-
+****
 # Lab A — single-process, two-QP RC ping-pong (no sockets!)
 ```
 cc -O2 -Wall qp_single_host.c -libverbs -o qp_single_host && ./qp_single_host

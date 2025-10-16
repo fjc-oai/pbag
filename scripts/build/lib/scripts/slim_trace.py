@@ -317,9 +317,9 @@ def _load_json(args: Args):
         print(f"Now loading {path} with invalid characters fixed...")
         with open(path, "r", encoding="utf-8", errors="ignore") as file:
             content = file.read()
-        # Remove all non-ASCII characters
-        sanitized_content = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F]", "", content)
-        sanitized_content = re.sub(r"[^\x00-\x7F]", "", sanitized_content)
+        # Only keep ASCII characters
+        # filtered = re.sub(r'[^\x20-\x7E]', '', content)
+        sanitized_content = ''.join(c for c in content if 32 <= ord(c) <= 126)
         try:
             data = json.loads(sanitized_content)
         except json.JSONDecodeError as e:

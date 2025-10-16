@@ -1,3 +1,12 @@
+- [Passing Parameters from C++ to CUDA Kernels](#passing-parameters-from-c-to-cuda-kernels)
+  - [1. Pass by Value (Small POD Structs)](#1-pass-by-value-small-pod-structs)
+  - [2. Pass by Pointer (Arrays or Larger Fixed-Size Data)](#2-pass-by-pointer-arrays-or-larger-fixed-size-data)
+  - [3. Pass Serialized Blobs (For Complex / Variable-Size Structs)](#3-pass-serialized-blobs-for-complex--variable-size-structs)
+  - [4. Pass Pointer Tables (Pointer-to-Pointer)](#4-pass-pointer-tables-pointer-to-pointer)
+  - [Summary](#summary)
+    - [Build \& Run (example)](#build--run-example)
+- [CUDA Qualifiers](#cuda-qualifiers)
+
 # Passing Parameters from C++ to CUDA Kernels
 
 This example demonstrates the major ways to pass data from C++ host code to CUDA kernels.
@@ -62,3 +71,18 @@ This lets the kernel index and dereference individual descriptors efficiently.
 ```bash
 nvcc -O2 -std=c++17 kernel_param.cu -o a.out && ./a.out
 ```
+
+---
+
+# CUDA Qualifiers
+
+- **Function Qualifiers:**  
+  `__global__` marks a kernel entry function callable from host code but runs on the device.  
+  `__device__` marks a GPU function callable only from other GPU functions or kernels.
+
+- **Variable Qualifiers:**  
+  `__shared__` declares per-block shared memory variables accessible only within a kernel function’s scope, with no external linkage.  
+  `__device__` declares global device variables that are accessible across kernels and can have external linkage.
+
+- **extern:**  
+  The `extern` keyword declares a variable defined elsewhere. In CUDA, only `__device__` globals can be `extern` linked across translation units (TUs), whereas `__shared__` variables cannot.

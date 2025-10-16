@@ -1,4 +1,4 @@
-Metadata-Version: 2.2
+Metadata-Version: 2.4
 Name: scripts
 Version: 0.1.0
 Summary: A collection of frequently used Python scripts
@@ -12,5 +12,6 @@ License-File: LICENSE
 Dynamic: author
 Dynamic: author-email
 Dynamic: classifier
+Dynamic: license-file
 Dynamic: requires-python
 Dynamic: summary
