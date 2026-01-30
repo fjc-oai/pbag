@@ -22,6 +22,12 @@
   - [Observibility](#observibility)
 - [Numbers](#numbers)
   - [Bandwidth Test](#bandwidth-test)
+- [D2D Local Memcpy](#d2d-local-memcpy)
+  - [Benchmarks](#benchmarks)
+  - [Memcpy pipeline](#memcpy-pipeline)
+  - [Profiling](#profiling)
+  - [Bottleneck analysis](#bottleneck-analysis)
+  - [Cuda d2d optimization](#cuda-d2d-optimization)
 
 
 ****
@@ -364,6 +370,135 @@ Software perspective
   - Dense matmul
     - [4k, 700] @ [700, 100k] ~1ms
     - [4k, 700] @ [700, 400k] ~4ms
-  - Element-wise kernel
+  - Element-wise **kernel**
     - H100 memory bandwidth is 3TB
     - [4M, 480] (~8GB data read and then write) 8ms. Theoritical latency is 8/3000*2~=5ms
+
+
+# D2D Local Memcpy
+## Benchmarks
+
+
+
+* nvbandwitdh: max tput is ~3TB/s
+    * ./nvbandwidth -t device_local_copy
+    * Only care about total tput. Uses tons of SMs
+* pytorch copy: tput ~3TB/s 
+    * For 1GB tensor copy_, grid: 1216, block: 256
+* cuda memcpy:
+    * Peak tput: 3.1TB/s overall, 47GB/s single SM
+    * <img src='images/bandwidth.png' width=400>
+
+
+## Memcpy pipeline 
+
+
+* Warp selection (SM front end)
+    * Each SM has warp schedulers.
+    * A scheduler selects a ready warp.
+    * On GB200, each SM supports up to 64 resident warps
+    * The warp issues a memory instruction (e.g. ld.global or st.global).
+* Warp scheduling while memory is in flight
+    * After issuing a load, a warp usually becomes “not ready” (waiting on memory).
+    * The SM scheduler immediately switches to another ready warp.
+    * This hides memory latency. The SM does not stall globally; only individual warps stall.
+    * A SM usually has a limit on in-flight warps though
+* Instruction issue
+    * The instruction is decoded and issued.
+    * For a load, the destination is registers.
+    * For a store, the source is registers.
+    * The instruction itself does NOT move data immediately.
+* Load/Store Unit (LSU) — per-SM
+    * Each SM has its own LSU pipelines - a per-SM resource, not shared across SMs
+    * The LSU receives the memory instruction.
+    * The LSU collects the per-thread addresses from the warp.
+* Warp-level coalescing (LSU)
+    * The LSU coalesces the 32 thread addresses into memory transactions.
+    * Transactions are formed at cacheline / sector granularity.
+    * Good alignment and contiguous accesses reduce transaction count.
+* L1 cache (optional / instruction-dependent)
+    * L1 cache is bypassed in ldg_cg instruction
+* L2 cache — shared across all SMs
+    * All global memory traffic goes through L2.
+    * it buffer requests, merge traffic from many SMs, forward misses to memory partitions
+    * L2 bandwidth is shared across all SMs.
+* Memory partitions / HBM
+    * On an L2 miss, the request goes to a memory partition.
+    * HBM controllers schedule DRAM commands.
+    * Data is fetched from HBM.
+* Data return path
+    * Data returns from HBM to L2.
+    * From L2, data is routed back to the requesting SM.
+    * The loaded data is written into registers.
+    * 
+
+
+## Profiling
+
+
+* List all kernels
+    * ncu --set none --target-processes all --print-summary per-kernel python -m mybandwidth.bench
+* Replay and profile a particular kernel
+    * ncu --set full --kernel-name mybandwidth_memcpy_sync_t1024_u4_vuint -o report_cuda_sm1_uint --target-processes all python -m mybandwidth.bench
+    * After running ncu, tput never recovers. likely due to ncu will lock clock or power
+
+
+## Bottleneck analysis
+
+
+* Peak overall tput 3TB/s: bounded by global memory bandwidth
+    * On GB200, HBM max tput is ~8TB/s bidirectional. 3TB/s read+ write is close to empirical limit
+    * Both nvbandwidth and torch show 3TB/s upper bound
+    * Also shown in ncu profiler
+    * <img src='images/bandwidth_ncu.png' width=400>
+
+* Single SM hits at 47GB/s: bounded by LSU bandwidth
+    * All SMs share L2 and HBM bandwidth, which wouldn’t be the bottleneck here
+    * possible bottlenecks (assuming addresses can be well coelasced)
+        * SM instruction issue rate (does SM issues sufficient instructions to saturate the LSU pipeline)
+        * LSU bandwidth (each SM has its own LSU)
+    * It’s not SM instruction issue rate bound because double the instruction issue rate got the same tput
+        * Compare using uint, uint2 and uint4
+            * python -m mybandwidth.bench --threads_list=[1024] --vec_type_list='["uint", "uint2", "uint4"]'
+        * Ncu show 2x instructions
+
+    * <img src='images/bandwidth_nthreads.png' width=400>
+    * For uint case, single SM tput is ~27GB/s. Likely bound by SM instruction issue rate
+
+* Single SM with smaller num of threads: likely bounded by per-warp instruction issue rate
+    * py -m mybandwidth.bench --print_table=True --threads_list='[1024, 896, 768, 640, 512, 256]'
+
+    * <img src='images/bandwidth_nthreads_2.png' width=400>
+
+    * For single SM, with n_threads=1024, 896, 768, 640, they all have similar tput ~47GB/s
+        * They are LSU bandwidth bound
+    * For single SM with 512 threads, it’s per-warp instruction issue rate bound
+        * A SM doesn’t have sufficient in-flight warps running, to issue enough instructions to saturate LSU 
+    * 256 threads has ~half of the 512 threads tput
+* Per-SM tput decreases with more SMs
+    * All SMs share the same L2 and HBM 
+    * Likely some resource contention, e.g. memory controller
+
+
+## Cuda d2d optimization
+
+
+
+* Unroll factor
+    * Little difference as long as unroll factor >=2
+    * py -m mybandwidth.bench --print_table=True --threads_list='[1024]' --unroll='[1,2,4,8]'
+    * <img src='images/bandwidth_unroll.png' width=400>
+
+* cp.async
+    * py -m mybandwidth.bench --print_table=True --threads_list='[1024]' --kernel_mode=both
+    * <img src='images/bandwidth_async.png' width=400>
+
+    * Little difference
+        * cp.async allows warp to issue memory instructions while not waiting for response
+        * Though even with sync load/store, a waiting warp will be swapped out. So no extra latency as well
+        * cp.async can be usually for overlapping memory and compute
+    * py -m mybandwidth.bench --print_table=True --threads_list='[128, 512, 1024]' --kernel_mode=both
+        * same results
+* Tiling
+    * Similar tput, due to warp level coalescing 
+* Big grid x small block VS small grid x big block
