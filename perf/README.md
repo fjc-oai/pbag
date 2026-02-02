@@ -24,10 +24,13 @@
   - [Bandwidth Test](#bandwidth-test)
 - [D2D Local Memcpy](#d2d-local-memcpy)
   - [Benchmarks](#benchmarks)
-  - [Memcpy pipeline](#memcpy-pipeline)
+  - [Execution Flow](#execution-flow)
   - [Profiling](#profiling)
   - [Bottleneck analysis](#bottleneck-analysis)
   - [Cuda d2d optimization](#cuda-d2d-optimization)
+- [D2D memcpy nvlink](#d2d-memcpy-nvlink)
+  - [Execution Flow](#execution-flow-1)
+  - [Bottleneck Analysis](#bottleneck-analysis-1)
 
 
 ****
@@ -390,7 +393,7 @@ Software perspective
     * <img src='images/bandwidth.png' width=400>
 
 
-## Memcpy pipeline 
+## Execution Flow
 
 
 * Warp selection (SM front end)
@@ -502,3 +505,37 @@ Software perspective
 * Tiling
     * Similar tput, due to warp level coalescing 
 * Big grid x small block VS small grid x big block
+
+
+# D2D memcpy nvlink
+
+## Execution Flow
+* Same as local memcpy, SM issues the copy instruction, LSU coalesces the request into memory transitions, and forwards to L2 cache
+  * The destination pointer refers to peer GPU memory mapped via CUDA P2P.
+* L2 identifies the request as targeting a remote GPU.
+  * Instead of forwarding to local memory partitions, L2 routes the request to the NVLink interface.
+  * L2 still buffers, merges, and arbitrates requests from all SMs.
+  * NVLink replaces the local L2 → HBM path with L2 → NVLink → peer GPU.
+* Transport latency is higher than local HBM but is hidden by warp scheduling
+* No SM execution is involved on the destination GPU for naive remote writes
+
+## Bottleneck Analysis
+* Single SM hits 47GB/s, exactly the same as local memcpy, as expected, due to bound by LSU (a per-SM resource)
+  * <img src='images/bandwidth_nvlink_sm20.png' width=400>
+  * n_threads < 512 is most likely bound by instruction issuing speed
+* Shared resource contention is stronger than HBM, likely due to smaller Nvlink bandwidth
+  * <img src='images/bandwidth_nvlink_sm128.png' width=400>
+* Overall bandwidth can hit ~670GB/s
+  * nvbandwidth hits ~710GB/s
+```
+./nvbandwidth -t device_to_device_bidirectional_memcpy_write_sm
+Running device_to_device_bidirectional_memcpy_write_sm.
+memcpy SM GPU(row) <-> GPU(column) Write1 bandwidth (GB/s)
+           0         1         2         3
+ 0       N/A    706.85    707.31    707.78
+ 1    694.22       N/A    706.27    706.62
+ 2    694.22    705.98       N/A    706.44
+ 3    693.99    706.21    706.38       N/A
+```
+
+  * Tried various optizations, e.g. unroll factor, bidirectional mode, barrier overhead, cuda graph, etc. But it turns out the difference is from unit computation, 1^30 vs 1e9.
