@@ -25,8 +25,16 @@
 - [D2D Local Memcpy](#d2d-local-memcpy)
   - [Benchmarks](#benchmarks)
   - [Execution Flow](#execution-flow)
+  - [MLP - Memory Level Parallelism](#mlp---memory-level-parallelism)
+    - [Asynchronous](#asynchronous)
+    - [cp.async](#cpasync)
   - [Profiling](#profiling)
   - [Bottleneck analysis](#bottleneck-analysis)
+    - [Peak overall tput 3TB/s: bounded by global memory bandwidth](#peak-overall-tput-3tbs-bounded-by-global-memory-bandwidth)
+    - [Single SM hits at 47GB/s: bounded by LSU bandwidth](#single-sm-hits-at-47gbs-bounded-by-lsu-bandwidth)
+    - [Single SM with smaller num of threads: likely bounded by per-warp instruction issue rate](#single-sm-with-smaller-num-of-threads-likely-bounded-by-per-warp-instruction-issue-rate)
+    - [Per-SM tput decreases with more SMs](#per-sm-tput-decreases-with-more-sms)
+    - [Per-SM tput decreases faster with more SMs for n\_threads=512 than n\_threads=1024](#per-sm-tput-decreases-faster-with-more-sms-for-n_threads512-than-n_threads1024)
   - [Cuda d2d optimization](#cuda-d2d-optimization)
 - [D2D memcpy nvlink](#d2d-memcpy-nvlink)
   - [Execution Flow](#execution-flow-1)
@@ -435,6 +443,68 @@ Software perspective
     * The loaded data is written into registers.
     * 
 
+## MLP - Memory Level Parallelism
+- MLP means, how many independent memory operations can be in flight at the same time.
+- The higher the MLP, the better you hide memory latency and the closer you get to peak bandwidth.
+- Two components of MLP
+  - Warp-level parallelism: More warps per SM → more independent memory ops
+  - Instruction-level parallelism (ILP): larger unroll factor -> Multiple independent loads before using results
+- Asynchronous-ness in memory instruction
+  - When a warp gets blocked by a memory instruction, warp scheduler will immediately swap to another ready-to-run warp. The SM doesn't stall globally, only individual warps stall
+  - A warp doesn't stall on a particular memory load instruction. It can issue multiple load instructions as long as they don't have dependencies. 
+
+### Asynchronous
+ldg() instruction is async as well. Example
+```
+v[0] = ldg(ptr0);
+v[1] = ldg(ptr1);
+```
+That does NOT mean: load 0 fully completes, then Load 1 starts
+
+
+Instead, what happens is:
+1.	Warp issues ldg(ptr0)
+2.	The request is sent to LSU → L2 → HBM/NVLink
+3.	Register v[0] is marked pending in the scoreboard
+4.	Warp moves to next instruction
+5.	Warp issues ldg(ptr1)
+6.	Another memory request is sent
+7.	Register v[1] is marked pending
+
+
+Now you have two outstanding loads. Nothing forces the second load to wait for the first one to return.
+
+
+Now the limiting factors become
+1.	how many registers can be pending
+2.	how many outstanding loads per warp
+3.	scoreboard tracking capacity
+
+### cp.async
+Why is cp.async needed at all then? And it does so:
+1. without creating a register dependency
+2.	without marking any register as pending
+3.	without stalling the warp on scoreboard
+
+
+The warp can continue issuing instructions even if the data hasn’t arrived yet.
+Normal load:
+-	Destination = register
+-	Register is tracked by scoreboard
+-	Any use of that register creates dependency
+
+
+cp.async:
+-	Destination = shared memory
+-	No register dependency
+-	No scoreboard tracking per register
+-	Synchronization is explicit and group-based
+
+
+This allows:
+-	Much deeper in-flight request queues
+-	Better control over when synchronization happens
+-	Software pipelining between stages
 
 ## Profiling
 
@@ -449,38 +519,53 @@ Software perspective
 ## Bottleneck analysis
 
 
-* Peak overall tput 3TB/s: bounded by global memory bandwidth
-    * On GB200, HBM max tput is ~8TB/s bidirectional. 3TB/s read+ write is close to empirical limit
-    * Both nvbandwidth and torch show 3TB/s upper bound
-    * Also shown in ncu profiler
-    * <img src='images/bandwidth_ncu.png' width=400>
+### Peak overall tput 3TB/s: bounded by global memory bandwidth
+  * On GB200, HBM max tput is ~8TB/s bidirectional. 3TB/s read+ write is close to empirical limit
+  * Both nvbandwidth and torch show 3TB/s upper bound
+  * Also shown in ncu profiler
+  * <img src='images/bandwidth_ncu.png' width=400>
 
-* Single SM hits at 47GB/s: bounded by LSU bandwidth
-    * All SMs share L2 and HBM bandwidth, which wouldn’t be the bottleneck here
-    * possible bottlenecks (assuming addresses can be well coelasced)
-        * SM instruction issue rate (does SM issues sufficient instructions to saturate the LSU pipeline)
-        * LSU bandwidth (each SM has its own LSU)
-    * It’s not SM instruction issue rate bound because double the instruction issue rate got the same tput
-        * Compare using uint, uint2 and uint4
-            * python -m mybandwidth.bench --threads_list=[1024] --vec_type_list='["uint", "uint2", "uint4"]'
-        * Ncu show 2x instructions
+### Single SM hits at 47GB/s: bounded by LSU bandwidth
+  * All SMs share L2 and HBM bandwidth, which wouldn’t be the bottleneck here
+  * possible bottlenecks (assuming addresses can be well coelasced)
+      * SM instruction issue rate (does SM issues sufficient instructions to saturate the LSU pipeline)
+      * LSU bandwidth (each SM has its own LSU)
+  * It’s not SM instruction issue rate bound because double the instruction issue rate got the same tput
+      * Compare using uint, uint2 and uint4
+          * python -m mybandwidth.bench --threads_list=[1024] --vec_type_list='["uint", "uint2", "uint4"]'
+      * Ncu show 2x instructions
 
-    * <img src='images/bandwidth_nthreads.png' width=400>
-    * For uint case, single SM tput is ~27GB/s. Likely bound by SM instruction issue rate
+  * <img src='images/bandwidth_nthreads.png' width=400>
+  * For uint case, single SM tput is ~27GB/s. Likely bound by SM instruction issue rate
 
-* Single SM with smaller num of threads: likely bounded by per-warp instruction issue rate
-    * py -m mybandwidth.bench --print_table=True --threads_list='[1024, 896, 768, 640, 512, 256]'
+### Single SM with smaller num of threads: likely bounded by per-warp instruction issue rate
+  * py -m mybandwidth.bench --print_table=True --threads_list='[1024, 896, 768, 640, 512, 256]'
 
-    * <img src='images/bandwidth_nthreads_2.png' width=400>
+  * <img src='images/bandwidth_nthreads_2.png' width=400>
 
-    * For single SM, with n_threads=1024, 896, 768, 640, they all have similar tput ~47GB/s
-        * They are LSU bandwidth bound
-    * For single SM with 512 threads, it’s per-warp instruction issue rate bound
-        * A SM doesn’t have sufficient in-flight warps running, to issue enough instructions to saturate LSU 
-    * 256 threads has ~half of the 512 threads tput
-* Per-SM tput decreases with more SMs
-    * All SMs share the same L2 and HBM 
-    * Likely some resource contention, e.g. memory controller
+  * For single SM, with n_threads=1024, 896, 768, 640, they all have similar tput ~47GB/s
+      * They are LSU bandwidth bound
+  * For single SM with 512 threads, it’s per-warp instruction issue rate bound
+      * A SM doesn’t have sufficient in-flight warps running, to issue enough instructions to saturate LSU 
+  * 256 threads has ~half of the 512 threads tput
+
+### Per-SM tput decreases with more SMs
+  * All SMs share the same L2 and HBM 
+  * Resource contention results into higher latency.
+  
+### Per-SM tput decreases faster with more SMs for n_threads=512 than n_threads=1024
+  * py -m mybandwidth.bench --threads_list='[512, 1024]'
+  * <img src='images/bandwidth_unroll_1.png' width=400>
+  * More SMs -> higher contention in L2/HBM -> higher latency
+    * 1024 threads have more warps -> higher MLP -> more stable under contention
+    * 512 threads have less warps. more sensitive to contention (increasing of latency)
+  * Increasing unroll factor can increase MLP as well
+    * 512 threads with 2x unroll factor achieved close tput as 1024 threads
+    * py -m mybandwidth.bench --threads_list='[512, 1024]' --unroll='[1,2,4,8]'
+    * <img src='images/bandwidth_unroll_threads512vs1024.png' width=400> 
+  * With n_threads=1024 unroll=8, we hit stable per-SM tput until reach HBM limit
+    * py -m mybandwidth.bench --threads_list='[512, 1024]' --unroll='[1,2, 4, 8,12, 16, 32]'
+    * <img src='images/bandwidth_unroll_3.png' width=400>
 
 
 ## Cuda d2d optimization
@@ -490,6 +575,7 @@ Software perspective
 * Unroll factor
     * Little difference as long as unroll factor >=2
     * py -m mybandwidth.bench --print_table=True --threads_list='[1024]' --unroll='[1,2,4,8]'
+    * With larger unroll factor, it increases MLP, thus more stable under contention. Checkout section above for details
     * <img src='images/bandwidth_unroll.png' width=400>
 
 * cp.async
