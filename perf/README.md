@@ -39,6 +39,13 @@
 - [D2D memcpy nvlink](#d2d-memcpy-nvlink)
   - [Execution Flow](#execution-flow-1)
   - [Bottleneck Analysis](#bottleneck-analysis-1)
+- [D2D memcpy nvlink handshake](#d2d-memcpy-nvlink-handshake)
+  - [Single SM tput](#single-sm-tput)
+    - [n\_channels](#n_channels)
+    - [Staging buf size](#staging-buf-size)
+    - [cp.async](#cpasync-1)
+    - [Rotation buffer](#rotation-buffer)
+  - [Total tput](#total-tput)
 
 
 ****
@@ -625,3 +632,51 @@ memcpy SM GPU(row) <-> GPU(column) Write1 bandwidth (GB/s)
 ```
 
   * Tried various optizations, e.g. unroll factor, bidirectional mode, barrier overhead, cuda graph, etc. But it turns out the difference is from unit computation, 1^30 vs 1e9.
+
+# D2D memcpy nvlink handshake
+
+## Single SM tput 
+
+
+* `total_time = n_iter * time_per_iter`
+* `n_iter = n_bytes / (n_channels * staging_buf_size_per_channel)`
+* `time_per_iter = memcpy remote + signal + memcpy local + signal`
+    * Or, `memcpy remote + signal`, when using rotation buffer
+
+
+### n_channels
+
+
+* mpirun -n 2 python -m memcpy_nvlink_handshake.bench  --n_threads_list='[256, 512, 1024]'  --channels_per_cta_list='[1,2,4,8,16, 32]' --n_ctas_list='[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40]'
+  * <img src='images/bandwidth_nvlink_handshake_nch.png' width=400>
+
+* Larger num channels, the higher tput: reduces n_iter -> reduce the fixed overhead from signal
+
+
+### Staging buf size
+
+
+* mpirun -n 2 python -m memcpy_nvlink_handshake.bench  --n_threads_list='[1024]'  --channels_per_cta_list='[2]' --n_ctas_list='[1, 2, 3, 4, 5]'  --staging_buf_size_per_channel_list='[65536,131072,262144,524288]'
+  * <img src='images/bandwidth_nvlink_handshake_buf.png' width=400>
+* Effectively equal to increase the num of channels
+
+### cp.async
+* Little impact
+* ldg/stg are asynchronous by its nature already
+
+
+### Rotation buffer
+
+
+* rotation buffer ~2x the tput
+* mpirun -n 2 python -m memcpy_nvlink_handshake.bench  --n_threads_list='[1024]'  --channels_per_cta_list='[2]' --n_ctas_list='[1, 2, 3, 4, 5]'  --staging_buf_size_per_channel_list='[65536,131072,262144,524288]' --rotation_buffer=True
+  * <img src='images/bandwidth_nvlink_handshake_rot.png' width=400>
+  * <img src='images/bandwidth_nvlink_handshake_rot1.png' width=400>
+
+
+## Total tput
+
+* n_thread=1024, n_channels=8, n_unroll=8, staging_buf=256K
+  * <img src='images/bandwidth_nvlink_handshake_peak.png' width=400>
+
+* [TODO] 650GB/s vs memcpy nvlink 660GB/s
